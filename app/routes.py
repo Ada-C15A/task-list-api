@@ -7,7 +7,15 @@ tasks_bp = Blueprint("tasks", __name__, url_prefix="/tasks")
 @tasks_bp.route("", strict_slashes=False, methods=["GET", "POST"])
 def handle_tasks():
     if request.method == "GET":
-        tasks = Task.query.order_by(Task.task_id).all()
+        sort_query = request.args.get("sort")
+        
+        if sort_query == "asc":
+            tasks = Task.query.order_by(Task.title).all()
+        elif sort_query == "desc":
+            tasks = Task.query.order_by(Task.title.desc()).all()
+        else:
+            tasks = Task.query.all()
+            
         tasks_response = []
         for task in tasks:
             is_complete = True if task.completed_at else False
