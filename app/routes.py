@@ -1,6 +1,7 @@
 from app import db
 from app.models.task import Task
 from flask import Blueprint, request, make_response, jsonify
+from datetime import datetime
 
 tasks_bp = Blueprint("tasks", __name__, url_prefix="/tasks")
 
@@ -32,7 +33,9 @@ def handle_tasks():
             if attribute not in request_body:
                 return make_response({"details": "Invalid data"}, 400)   
         new_task = Task(title=request_body["title"],
-                        description=request_body["description"])
+                        description=request_body["description"],
+                        completed_at=request_body["completed_at"])
+            
         db.session.add(new_task)
         db.session.commit()
         
@@ -87,3 +90,36 @@ def handle_task(task_id):
             }
         )
     
+@tasks_bp.route("/<task_id>/mark_complete", strict_slashes=False, methods=["PATCH"])
+def mark_complete(task_id):
+    task = Task.query.get(task_id)
+    if not task:
+        return make_response(f"Task {task_id} not found", 404)
+
+    task.completed_at = datetime.utcnow()
+    db.session.commit()
+    
+    is_complete = True if task.completed_at else False
+    return {
+            "task": {"id": task.task_id,
+                    "title": task.title,
+                    "description": task.description,
+                    "is_complete": is_complete}
+        }
+ 
+@tasks_bp.route("/<task_id>/mark_incomplete", strict_slashes=False, methods=["PATCH"])
+def mark_incomplete(task_id):
+    task = Task.query.get(task_id)
+    if not task:
+        return make_response(f"Task {task_id} not found", 404)
+
+    task.completed_at = None
+    db.session.commit()
+    
+    is_complete = True if task.completed_at else False
+    return {
+            "task": {"id": task.task_id,
+                    "title": task.title,
+                    "description": task.description,
+                    "is_complete": is_complete}
+        }
