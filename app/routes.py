@@ -20,18 +20,23 @@ def handle_tasks():
         return jsonify(tasks_response)
     elif request.method == "POST":
         request_body = request.get_json()
+        for attribute in {"title", "description", "completed_at"}:
+            if attribute not in request_body:
+                return make_response({"details": "Invalid data"}, 400)   
         new_task = Task(title=request_body["title"],
                         description=request_body["description"])
         db.session.add(new_task)
         db.session.commit()
         
         is_complete = True if new_task.completed_at else False
-        return make_response({
+        return make_response({"task":
+            {
                 "id": new_task.task_id,
                 "title": new_task.title,
                 "description": new_task.description,
-                "is_complete": is_complete           
-        }
+                "is_complete": is_complete
+                }
+        }           
                              , 201)
 
 @tasks_bp.route("/<task_id>", strict_slashes=False, methods=["GET", "PUT", "DELETE"])
@@ -65,3 +70,12 @@ def handle_task(task_id):
             }
         }           
         )
+    elif request.method == "DELETE":
+        db.session.delete(task)
+        db.session.commit()
+        return make_response(
+            {"details": 
+                f"Task {task.task_id} \"{task.title}\" successfully deleted"
+            }
+        )
+    
