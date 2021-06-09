@@ -1,9 +1,14 @@
+import requests
+from dotenv import load_dotenv
+import os
 import datetime
 from sqlalchemy import desc
 from app import db
 from app.models.task import Task
 from flask import request, Blueprint, make_response, jsonify
 tasks_bp = Blueprint("tasks", __name__, url_prefix="/tasks")
+
+load_dotenv()
 
 
 @tasks_bp.route("/", methods=["GET", "POST"])
@@ -106,13 +111,21 @@ def handle_task(task_id):
 
 @tasks_bp.route("/<task_id>/mark_complete", methods=["PATCH"])
 def handle_task_complete(task_id):
-    # get current data, set the thing
     task = Task.query.get(task_id)
     if not task:
         return make_response(f"Task #{task_id} Not Found"), 404
 
     task.completed_at = datetime.datetime.utcnow()
     db.session.commit()
+    channel = "channel=task-notifications"
+    text = f"text=Someone just completed the task {task.title}"
+
+    path = f"https://slack.com/api/chat.postMessage?{channel}&{text}"
+
+    SLACKBOT_AUTH = os.environ.get(
+        "SLACKBOT_AUTH")
+
+    requests.post(path, headers={'Authorization': f'Bearer {SLACKBOT_AUTH}'})
 
     task_response = {"task": {
         "id": task.task_id,
