@@ -2,6 +2,9 @@ from app import db
 from app.models.task import Task
 from flask import Blueprint, request, make_response, jsonify
 from datetime import datetime
+import os
+import requests
+
 
 tasks_bp = Blueprint("tasks", __name__, url_prefix="/tasks")
 
@@ -90,6 +93,17 @@ def handle_task(task_id):
             }
         )
     
+def post_to_slack(task):
+    slack_token = os.environ.get("SLACK_POST_MESSAGE_API_TOKEN")
+    slack_path = "https://slack.com/api/chat.postMessage"
+    query_params ={
+        "channel": "task-notifications",
+        "text": f"Someone just completed the task {task.title}", 
+    }
+    headers = {"Authorization": f"Bearer {slack_token}"}
+    requests.post(slack_path, params = query_params, headers = headers)   
+    
+    
 @tasks_bp.route("/<task_id>/mark_complete", strict_slashes=False, methods=["PATCH"])
 def mark_complete(task_id):
     task = Task.query.get(task_id)
@@ -98,6 +112,8 @@ def mark_complete(task_id):
 
     task.completed_at = datetime.utcnow()
     db.session.commit()
+    
+    post_to_slack(task)
     
     is_complete = True if task.completed_at else False
     return {
@@ -109,6 +125,7 @@ def mark_complete(task_id):
  
 @tasks_bp.route("/<task_id>/mark_incomplete", strict_slashes=False, methods=["PATCH"])
 def mark_incomplete(task_id):
+    
     task = Task.query.get(task_id)
     if not task:
         return make_response(f"Task {task_id} not found", 404)
