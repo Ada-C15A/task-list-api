@@ -5,13 +5,23 @@ from flask import request, Blueprint, make_response, jsonify
 tasks_bp = Blueprint("tasks_bp", __name__, url_prefix="/tasks")
 
 @tasks_bp.route("", methods=["GET", "POST"])
-def handle_tasks():        
+def handle_tasks():
     if request.method == "GET":
         title_from_url = request.args.get("title")
         if title_from_url:
             tasks = Task.query.filter_by(title=title_from_url)
         else:
-            tasks = Task.query.order_by(Task.title).all()
+            sort = request.args.get("sort")
+            if not sort:
+                tasks = Task.query.all()
+            elif sort == "asc":  
+                tasks = Task.query.order_by(Task.title.asc()).all()
+            elif sort == "desc":
+                tasks = Task.query.order_by(Task.title.desc()).all()    
+            else:
+                tasks = Task.query.all()  
+
+            # tasks = Task.query.order_by(Task.title).all()
         tasks_response = []
         for task in tasks:
             tasks_response.append({
