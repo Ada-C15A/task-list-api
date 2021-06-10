@@ -1,5 +1,5 @@
 from app import db
-import datetime
+from datetime import datetime
 from flask import Blueprint
 from flask import request
 from flask import jsonify
@@ -89,12 +89,12 @@ def handle_task(task_id):
         })
 
 @tasks_bp.route("/<task_id>/mark_complete", methods=["PATCH"])
-def handle_task_completion(task_id):
+def handle_task_complete(task_id):
     task = Task.query.get(task_id)
     if task is None:
         return make_response("", 404)
 
-    task.completed_at = datetime.datetime()
+    task.completed_at = datetime.utcnow()
     db.session.commit()
 
     return make_response({
@@ -107,7 +107,7 @@ def handle_task_completion(task_id):
     })
 
 @tasks_bp.route("/<task_id>/mark_incomplete", methods=["PATCH"])
-def handle_task_incompletion(task_id):
+def handle_task_incomplete(task_id):
     task = Task.query.get(task_id)
     if task is None:
         return make_response("", 404)
