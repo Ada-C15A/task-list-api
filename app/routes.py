@@ -19,7 +19,14 @@ def handle_tasks():
 
     if request.method == "GET":
         tasks = Task.query.all()
+        title_query = request.args.get("sort")
+        if title_query == "asc":
+            tasks = Task.query.order_by(asc(Task.title))
+        elif title_query == "desc":
+            tasks = Task.query.order_by(desc(Task.title))
+            
         tasks_response = []
+        
         for task in tasks:
             if task.completed_at is None :
                  tasks_response.append({
