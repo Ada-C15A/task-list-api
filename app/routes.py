@@ -24,25 +24,47 @@ def handle_tasks():
     
         tasks_response = []
         for task in tasks:
-            tasks_response.append(task.to_json())
-            return jsonify(tasks_response), 200
+            if task.completed_at == None:
+                completed_at = False
+            else:
+                task.completed_at = True
+            tasks_response.append({
+                "id": task.task_id,
+                "title": task.title,
+                "description": task.description,
+                "is_complete": completed_at,
+            })
+        return make_response(jsonify(tasks_response), 200)
+
 
 #create a task with null completed at
     elif request.method == "POST":
-            request_body = request.get_json()
-            if "title" in request_body and "description" in request_body and "completed_at" in request_body:
-
-                new_task = Task(title=request_body["title"],
-                                description=request_body["description"], 
-                                completed_at=request_body["completed_at"])
-
-                db.session.add(new_task) # "adds model to the db"
-                db.session.commit() # commits the action above               
-                return {
-                        "task": new_task.to_json()
-                    }, 201
-                
+        request_body = request.get_json()
+        if "title" not in request_body or "description" not in request_body or "completed_at" not in request_body:
             return {"details": "Invalid data"}, 400
+            
+        if not "completed_at" in request_body or not request_body["completed_at"]:
+            completed_at = False
+        else:
+            completed_at = request_body["completed_at"]
+        
+        new_task = Task(
+            title=request_body["title"],
+            description=request_body["description"], 
+            completed_at=request_body["completed_at"]
+        )
+
+        db.session.add(new_task) # "adds model to the db"
+        db.session.commit() # commits the action above
+
+        return make_response({
+            "task":{ 
+                "id": new_task.task_id,
+                "title": new_task.title,
+                "description": new_task.description,
+                "is_complete": completed_at
+            }
+        }), 201   
 
 # return one task
 @task_bp.route("/<task_id>", methods=["GET", "PUT", "DELETE"], strict_slashes = False)
@@ -52,8 +74,17 @@ def handle_task(task_id):
     if request.method == "GET":
         if task is None:
             return make_response(f"Task #{task_id} not found"), 404
+        if not task.completed_at:
+            completed_at = False
+        else:
+            completed_at = task.completed_at["completed_at"]
         return {
-            "task": task.to_json()
+            "task":{
+            "id": task.task_id,
+            "title": task.title,
+            "description": task.description,
+            "is_complete": completed_at
+            }
         }, 200
 
     # Update a task
@@ -68,9 +99,13 @@ def handle_task(task_id):
 
         db.session.commit()
         return {
-                    "task": task.to_json()
-                }, 200
-                
+            "task": {
+                "id": task.task_id,
+                "title": task.title,
+                "description": task.description, 
+                "is_complete": False
+            }
+        }, 200
 
     # Delete a task
     elif request.method == "DELETE":
