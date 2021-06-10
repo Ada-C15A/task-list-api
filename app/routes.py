@@ -5,7 +5,7 @@ from flask import request, Blueprint, make_response, jsonify
 tasks_bp = Blueprint("tasks_bp", __name__, url_prefix="/tasks")
 
 @tasks_bp.route("", methods=["GET", "POST"])
-def handle_tasks():
+def handle_tasks():        
     if request.method == "GET":
         title_from_url = request.args.get("title")
         if title_from_url:
@@ -18,15 +18,16 @@ def handle_tasks():
                 "id": task.id,
                 "title": task.title,
                 "description": task.description,
-                "completed_at": task.completed_at
+                "is_complete": bool(task.completed_at)
             })
         return jsonify(tasks_response)
 
     elif request.method == "POST":
         request_body = request.get_json()
-        new_task = Task(title=request_body["title"],
+        new_task = Task(id = request_body["id"],
+                        title=request_body["title"],
                         description=request_body["description"],
-                        completed_at=request_body["completed_at"])
+                        is_complete=request_body["completed_at"])
 
         db.session.add(new_task)
         db.session.commit()
@@ -37,26 +38,25 @@ def handle_tasks():
 def handle_planet(tasks_id):
     task = Task.query.get(tasks_id)
     if task is None:
-        return make_response("something went wrong", 404)
+        return make_response("", 404)
 
     if request.method == "GET":
-        return {
+        selected_task = {"task":{
             "id": task.id,
             "title": task.title,
             "description": task.description,
-            "completed_at": task.completed_at
+            "is_complete": bool(task.completed_at)}
         }
+        return selected_task
     elif request.method == "PUT":
         form_data = request.get_json()
-
         task.title = form_data["title"]
         task.description = form_data["description"]
         task.completed_at = form_data["completed_at"]
-
         db.session.commit()
-
         return make_response(f"Task #{task.id} successfully updated!!")
+   
     elif request.method == "DELETE":
         db.session.delete(task)
         db.session.commit()
-        return make_response(f"Task #{task.id} successfully deleted")
+        return make_response(f'Task {task.id} "{task.description}"successfully deleted')
