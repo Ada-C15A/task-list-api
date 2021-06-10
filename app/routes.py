@@ -11,7 +11,7 @@ def handle_tasks():
         if title_from_url:
             tasks = Task.query.filter_by(title=title_from_url)
         else:
-            tasks = Task.query.all()
+            tasks = Task.query.order_by(Task.title).all()
         tasks_response = []
         for task in tasks:
             tasks_response.append({
@@ -46,10 +46,7 @@ def handle_tasks():
 
 @tasks_bp.route("/<tasks_id>", methods=["GET", "PUT", "DELETE"])
 def handle_task(tasks_id):
-    task = Task.query.get(tasks_id)
-    if task is None:
-        return make_response("", 404)
-
+    task = Task.query.get_or_404(tasks_id)
     if request.method == "GET":
         selected_task = {"task":
             {"id": task.id,
@@ -57,26 +54,25 @@ def handle_task(tasks_id):
             "description": task.description,
             "is_complete": bool(task.completed_at)
             }}
-        return selected_task
+        return jsonify(selected_task),200
 
     elif request.method == "PUT":
-        form_data = request.get_json()
-        task.id = form_data["id"]
-        task.title = form_data["title"]
-        task.description = form_data["description"]
-        task.completed_at = form_data["completed_at"]
-        
-        updated_task = {"task":{
-            "id": task.id,
-            "title": task.title,
-            "description": task.description,
-            "is_complete": bool(task.completed_at)}            
-        }
+        request_body = request.get_json()
+        task.title = request_body["title"]
+        task.description = request_body["description"]
+        task.completed_at = request_body["completed_at"]
+        updated_task = {'task':{
+                "id": task.id,
+                "title": task.title,
+                "description": task.description,
+                "is_complete": bool(task.completed_at)
+            }}
         db.session.commit()
-        return make_response(updated_task, 200)
+        return jsonify(updated_task),200
+
    
     elif request.method == "DELETE":
         db.session.delete(task)
         db.session.commit()
-        stuff_to_del = make_response(f'Task {task.id} "{task.description}"successfully deleted')
-        return jsonify({'description':{stuff_to_del}}), 200
+        task_response_body = {"details": f'Task {task.id} "{task.title}" successfully deleted'}
+        return jsonify(task_response_body),200
