@@ -1,6 +1,7 @@
 from app import db
 from flask import Blueprint, json
 from sqlalchemy import asc, desc 
+from datetime import datetime
 from app.models.task import Task
 from flask import request, make_response, jsonify
 
@@ -118,4 +119,43 @@ def handle_task(task_id):
         }, 200
             
 
+# modify complete task
+@task_bp.route("/<task_id>/mark_complete", methods=["PATCH"], strict_slashes = False)
+def mark_task_complete(task_id):
+    task = Task.query.get(task_id)
 
+    if task is None:
+        return make_response(f"Task #{task_id} not found"), 404
+    else:                         
+        task.completed_at = datetime.utcnow() # updates it with a date in "completed_at" field
+        db.session.commit()
+
+        response_body = {
+            "task": {
+                "id": task.task_id,
+                "title": task.title,
+                "description": task.description,
+                "is_complete": True # this is always true bc we are always setting completed at
+                }
+        }
+        return jsonify(response_body), 200
+
+# modify incomplete task 
+@task_bp.route("/<task_id>/mark_incomplete", methods=["PATCH"])
+def make_task_incomplete(task_id):
+    task = Task.query.get(task_id)
+
+    if task is None:
+        return make_response(f"Task #{task_id} not found"), 404
+    else:
+        task.completed_at = None
+        db.session.commit()
+    response_body = {
+        "task": {
+            "id": task.task_id,
+            "title": task.title,
+            "description": task.description,
+            "is_complete": False
+        }
+    }
+    return jsonify(response_body), 200
