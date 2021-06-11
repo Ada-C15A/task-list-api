@@ -13,21 +13,30 @@ def handle_tasks():
         description = request_body.get("description")
 
         if not title or not description or "completed_at" not in request_body:
-            return jsonify({"details": "Invalid Data"}), 400
+            return make_response(jsonify({"details": "Invalid data"}), 400)
 
         new_task = Task(
-                    id=request_body["id"],
                     title=request_body["title"],
                     description=request_body["description"],
                     completed_at=request_body["completed_at"])
+
+        if new_task.completed_at == None:
+            completed_at = False
+        else:
+            completed_at = True
+
+        # response_body = {
+        # }
         db.session.add(new_task)
         db.session.commit()
-    
-        if new_task.completed_at == None:
-            new_task.completed_at = False
-        else:
-            new_task.completed_at = True
-        return jsonify(f'Task {new_task.title} successfully created', 201)
+
+        return make_response({
+            "task": {
+                "id": new_task.task_id,
+                "title": new_task.title,
+                "description": new_task.description,
+                "is_complete": completed_at
+            }}, 201)
 
     elif request.method == "GET":
         url_title = request.args.get("title")
@@ -38,13 +47,12 @@ def handle_tasks():
         tasks_response = []
         for task in tasks:
             tasks_response.append({
-                "id": task.id,
+                "id": task.task_id,
                 "title": task.title,
                 "description": task.description,
                 "is_complete": bool(task.completed_at)
             })
         return jsonify(tasks_response)
-
 
 @tasks_bp.route("/<task_id>", methods=["GET", "PUT", "DELETE"])    
 def handle_task(task_id):
@@ -54,14 +62,14 @@ def handle_task(task_id):
 
     if request.method == "GET":
         selected_task = {"task": 
-            {"id": task.id,
+            {"id": task.task_id,
             "title": task.title,
             "description": task.description,
             "is_complete": bool(task.completed_at)
         }}
         return jsonify(selected_task), 200
 
-    elif request.method == "PUT":
+    elif request.method == "PUT": 
         request_body = request.get_json()
 
         task.title = request_body["title"]
@@ -69,18 +77,23 @@ def handle_task(task_id):
         task.completed_at = request_body["completed_at"]
 
         updated_task = {"task": 
-            {"id": task.id,
+            {"id": task.task_id,
             "title": task.title,
             "description": task.description,
             "is_complete": bool(task.completed_at)
         }}
-        db.sessions.add(task)
+        db.session.add(task)
         db.session.commit()
-        return jsonify(updated_task), 200
+        return make_response(jsonify(updated_task)), 200
 
     elif request.method == "DELETE":
         db.session.delete(task)
         db.session.commit()
-        task_response_body = {"details": f'Task {task.id} "with title: {task.title}" has been successfully deleted'}
+        task_response_body = {
+            "details":
+                f'Task {task.task_id} \"{task.title}\" successfully deleted'
+            }
         return jsonify(task_response_body), 200
 
+# https://github.com/OhCloud/task-list-api
+# https://github.com/Ada-C15A/task-list-api/pull/3
