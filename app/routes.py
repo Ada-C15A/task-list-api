@@ -1,6 +1,7 @@
 from app import db
 from app.models.task import Task
 from flask import request, Blueprint, make_response, jsonify
+from datetime import datetime
 
 tasks_bp = Blueprint("tasks_bp", __name__, url_prefix="/tasks")
 
@@ -21,7 +22,6 @@ def handle_tasks():
             else:
                 tasks = Task.query.all()  
 
-            # tasks = Task.query.order_by(Task.title).all()
         tasks_response = []
         for task in tasks:
             tasks_response.append({
@@ -80,9 +80,39 @@ def handle_task(tasks_id):
         db.session.commit()
         return jsonify(updated_task),200
 
-   
     elif request.method == "DELETE":
         db.session.delete(task)
         db.session.commit()
         task_response_body = {"details": f'Task {task.id} "{task.title}" successfully deleted'}
         return jsonify(task_response_body),200
+
+@tasks_bp.route("/<task_id>/mark_complete", methods=["PATCH"])
+def handle_task_complete(task_id):
+    task = Task.query.get_or_404(task_id)
+    task.completed_at = datetime.now()
+    
+    db.session.commit()
+
+    patched_task = {"task": {
+        "id": task.id,
+        "title": task.title,
+        "description": task.description,
+        "is_complete": True
+        }}
+    return jsonify(patched_task),200
+
+@tasks_bp.route("/<task_id>/mark_incomplete", methods=["PATCH"])
+def handle_task_incomplete(task_id):
+    task = Task.query.get_or_404(task_id)
+    task.completed_at = None
+
+    db.session.commit()
+
+    patched_task = {"task": {
+        "id": task.id,
+        "title": task.title,
+        "description": task.description,
+        "is_complete": False
+        }}
+    return jsonify(patched_task),200
+
