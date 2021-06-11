@@ -35,7 +35,6 @@ def handle_tasks():
                 "title": task.title,
                 "description": task.description,
                 "is_complete": is_complete
-                # "goal_id": task.goal_id
             })
         return make_response(jsonify(tasks_response), 200)
 
@@ -82,8 +81,9 @@ def handle_task(task_id):
             "title": task.title,
             "description": task.description,
             "is_complete": is_complete,
-            "goal_id": task.goal_id,
         }}
+        if task.goal_id:
+            task_response["task"]["goal_id"] = task.goal_id
         return make_response(task_response, 200)
     elif request.method == "PUT":
         form_data = request.get_json()
