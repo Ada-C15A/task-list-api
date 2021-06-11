@@ -100,7 +100,7 @@ def test_update_task(client, one_task):
             "id": 1,
             "title": "Updated Task Title",
             "description": "Updated Test Description",
-            "is_complete": False
+            "is_completed": False
         }
     }
     task = Task.query.get(1)
