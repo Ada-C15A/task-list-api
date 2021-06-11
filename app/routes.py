@@ -27,7 +27,7 @@ def handle_tasks():
             new_task.completed_at = False
         else:
             new_task.completed_at = True
-        return jsonify(new_task), 201
+        return jsonify(new_task), 200
 
     elif request.method == "GET":
         tasks = Task.query.all()
@@ -39,7 +39,7 @@ def handle_tasks():
                 "description": task.description,
                 "completed_at": bool(task.completed_at)
             })
-        return jsonify(tasks_response)
+        return jsonify(tasks), 200
 
 
 @tasks_bp.route("/<task_id>", methods=["GET", "PUT", "DELETE"])
@@ -50,12 +50,13 @@ def handle_task(task_id):
         return make_response("", 404)
 
     if request.method == "GET":
-        return {
-            "id": task.task_id,
-            "title": task.title,
-            "description": task.description,
-            "is_complete": bool(task.completed_at)
-        }
+        return { "task":{
+          "id": task.task_id,
+          "title": task.title,
+          "description": task.description,
+          "is_complete": bool(task.completed_at)
+          }
+        }, 200
 
     elif request.method == "PUT":
         form_data = request.get_json()
@@ -68,9 +69,4 @@ def handle_task(task_id):
         db.session.delete(task)
         db.session.commit()
 
-        return make_response(
-            {
-            "details":
-               f"Task {task.task_id} \"{task.title}\" successfully deleted"
-            }
-        )
+        return {"details":f"Task {task.task_id} \"{task.title}\" successfully deleted"}
