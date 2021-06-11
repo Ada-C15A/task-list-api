@@ -35,6 +35,7 @@ def handle_tasks():
                 "title": task.title,
                 "description": task.description,
                 "is_complete": is_complete
+                # "goal_id": task.goal_id
             })
         return make_response(jsonify(tasks_response), 200)
 
@@ -80,7 +81,8 @@ def handle_task(task_id):
             "id": task.task_id,
             "title": task.title,
             "description": task.description,
-            "is_complete": is_complete
+            "is_complete": is_complete,
+            "goal_id": task.goal_id,
         }}
         return make_response(task_response, 200)
     elif request.method == "PUT":
@@ -224,3 +226,49 @@ def handle_goal(goal_id):
             "details": f"Goal {goal.goal_id} \"{goal.title}\" successfully deleted"
         }
         return make_response(goal_response, 200)
+
+
+@goals_bp.route("/<goal_id>/tasks", methods=["POST", "GET"])
+def handle_goal_tasks(goal_id):
+    goal = Goal.query.get(goal_id)
+    if not goal:
+        return make_response(f"Goal #{goal_id} Not Found", 404)
+
+    if request.method == "POST":
+        request_body = request.get_json()
+        task_ids = request_body["task_ids"]
+        for task_id in task_ids:
+            task = Task.query.get(task_id)
+            # if not task:
+            #     return make_response(f"Task #{task_id} Not Found", 404)
+            task.goal_id = goal_id
+
+        db.session.commit()
+        goal_response = {
+            "id": goal.goal_id,
+            "task_ids": task_ids
+        }
+        return make_response(jsonify(goal_response), 200)
+
+    if request.method == "GET":
+        tasks = Task.query.filter_by(goal_id=goal.goal_id)
+        tasks_response = []
+
+        for task in tasks:
+            if not task.completed_at:
+                is_complete = False
+            else:
+                is_complete = True
+            tasks_response.append({
+                "id": task.task_id,
+                "title": task.title,
+                "description": task.description,
+                "is_complete": is_complete,
+                "goal_id": task.goal_id,
+            })
+        goal_response = {
+            "id": goal.goal_id,
+            "title": goal.title,
+            "tasks": tasks_response
+        }
+        return make_response(jsonify(goal_response), 200)
