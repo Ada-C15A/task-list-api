@@ -1,8 +1,9 @@
 from app import db
 from flask import Blueprint, json
 from sqlalchemy import asc, desc 
-from datetime import datetime
 from app.models.task import Task
+from datetime import datetime
+from sqlalchemy.sql.functions import now
 from flask import request, make_response, jsonify
 
 
@@ -47,7 +48,7 @@ def handle_tasks():
         if not "completed_at" in request_body or not request_body["completed_at"]:
             completed_at = False
         else:
-            completed_at = request_body["completed_at"]
+            completed_at = True
         
         new_task = Task(
             title=request_body["title"],
@@ -93,10 +94,17 @@ def handle_task(task_id):
         if task is None:
             return make_response(f"Task #{task_id} not found"), 404
         form_data = request.get_json()
-        if "title" in form_data or "description" in form_data or "completed_at" in form_data:
-            task.title = form_data["title"]
-            task.description = form_data["description"]
-            task.completed_at = form_data["completed_at"]
+
+        if "title" not in form_data or "description" not in form_data or "completed_at" not in form_data:
+            return {"details": "Invalid data"}, 400
+
+        if not "completed_at" in form_data or not form_data["completed_at"]:
+            is_complete = False
+        else:
+            is_complete = True            
+        task.title = form_data["title"]
+        task.description = form_data["description"]
+        task.completed_at = form_data["completed_at"]
 
         db.session.commit()
         return {
@@ -104,7 +112,7 @@ def handle_task(task_id):
                 "id": task.task_id,
                 "title": task.title,
                 "description": task.description, 
-                "is_complete": False
+                "is_complete": is_complete
             }
         }, 200
 
@@ -124,38 +132,37 @@ def handle_task(task_id):
 def mark_task_complete(task_id):
     task = Task.query.get(task_id)
 
-    if task is None:
+    if not task: # this is the task check (wash my car)
         return make_response(f"Task #{task_id} not found"), 404
-    else:                         
-        task.completed_at = datetime.utcnow() # updates it with a date in "completed_at" field
-        db.session.commit()
+    task.completed_at = datetime.utcnow()
+    db.session.commit()
 
-        response_body = {
-            "task": {
-                "id": task.task_id,
-                "title": task.title,
-                "description": task.description,
-                "is_complete": True # this is always true bc we are always setting completed at
-                }
-        }
-        return jsonify(response_body), 200
-
-# modify incomplete task 
-@task_bp.route("/<task_id>/mark_incomplete", methods=["PATCH"])
-def make_task_incomplete(task_id):
-    task = Task.query.get(task_id)
-
-    if task is None:
-        return make_response(f"Task #{task_id} not found"), 404
-    else:
-        task.completed_at = None
-        db.session.commit()
     response_body = {
         "task": {
             "id": task.task_id,
             "title": task.title,
             "description": task.description,
-            "is_complete": False
+            "is_complete": True # this is always true bc we are always setting completed at
         }
     }
     return jsonify(response_body), 200
+
+# # modify incomplete task 
+# @task_bp.route("/<task_id>/mark_incomplete", methods=["PATCH"])
+# def make_task_incomplete(task_id):
+#     task = Task.query.get(task_id)
+
+#     if task is None:
+#         return make_response(f"Task #{task_id} not found"), 404
+#     else:
+#         task.completed_at = None
+#         db.session.commit()
+#     response_body = {
+#         "task": {
+#             "id": task.task_id,
+#             "title": task.title,
+#             "description": task.description,
+#             "is_complete": task.completed_at
+#         }
+#     }
+#     return jsonify(response_body), 200
