@@ -56,19 +56,20 @@ def handle_task(task_id):
     elif request.method == "PUT":
         form_data = request.get_json()
         
-        task.name = form_data["title"]
+        task.title = form_data["title"]
         task.description = form_data["description"]
-        #task.completed_at = form_data["completed_at"]
+        task.completed_at = form_data["completed_at"]
         
         db.session.commit()
-        commited_task = {"task":
-            {"id": task.name,
-            "title": task.title,
-            "description": task.description,
-            "is_completed": bool(task.completed_at)}}
         
-        #return jsonify(commited_task), 200      
-        return jsonify(f"Task #{commited_task} successfully updated")
+        commited_task = {"task": 
+                        {"id": task.task_id,
+                        "title": task.title,
+                        "description": task.description,
+                        "is_completed": bool(task.completed_at)
+                    }
+                    }
+        return jsonify(commited_task), 200
     
     elif request.method == "DELETE":
         if task == None:
