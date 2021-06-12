@@ -5,7 +5,11 @@ from app.models.task import Task
 from datetime import datetime
 from sqlalchemy.sql.functions import now
 from flask import request, make_response, jsonify
+from dotenv import load_dotenv
+import os
+import requests
 
+load_dotenv()
 
 task_bp = Blueprint("tasks", __name__, url_prefix="/tasks")
 
@@ -29,7 +33,8 @@ def handle_tasks():
             if task.completed_at == None:
                 completed_at = False
             else:
-                task.completed_at = True
+                completed_at = True
+
             tasks_response.append({
                 "id": task.task_id,
                 "title": task.title,
@@ -137,6 +142,17 @@ def mark_task_complete(task_id):
     task.completed_at = datetime.utcnow()
     db.session.commit()
 
+    base_path = "https://slack.com/api/chat.postMessage"
+    slack_tocken = os.environ.get("SLACK_API_KEY")
+    query_params = {
+        "channel": "task-notifications",
+        "text": f"Someone just completed the {task.title}"
+    }
+    headers = {
+        "Authorization": f"Bearer {slack_tocken}"
+    }
+    requests.post(base_path, params=query_params, headers=headers)
+
     response_body = {
         "task": {
             "id": task.task_id,
@@ -147,22 +163,22 @@ def mark_task_complete(task_id):
     }
     return jsonify(response_body), 200
 
-# # modify incomplete task 
-# @task_bp.route("/<task_id>/mark_incomplete", methods=["PATCH"])
-# def make_task_incomplete(task_id):
-#     task = Task.query.get(task_id)
+# modify incomplete task
+@task_bp.route("/<task_id>/mark_incomplete", methods=["PATCH"])
+def make_task_incomplete(task_id):
+    task = Task.query.get(task_id)
 
-#     if task is None:
-#         return make_response(f"Task #{task_id} not found"), 404
-#     else:
-#         task.completed_at = None
-#         db.session.commit()
-#     response_body = {
-#         "task": {
-#             "id": task.task_id,
-#             "title": task.title,
-#             "description": task.description,
-#             "is_complete": task.completed_at
-#         }
-#     }
-#     return jsonify(response_body), 200
+    if task is None:
+        return make_response(f"Task #{task_id} not found"), 404
+    else:
+        task.completed_at = None
+        db.session.commit()
+    response_body = {
+        "task": {
+            "id": task.task_id,
+            "title": task.title,
+            "description": task.description,
+            "is_complete": task.completed_at
+        }
+    }
+    return jsonify(response_body), 200
