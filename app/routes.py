@@ -1,6 +1,7 @@
 from app import db
 from app.models.task import Task
 from flask import request, Blueprint, make_response, jsonify
+from datetime import datetime
 
 
 tasks_bp = Blueprint("tasks", __name__, url_prefix="/tasks")
@@ -52,10 +53,10 @@ def handle_tasks():
         
     return jsonify(commited_task), 201
 
-@tasks_bp.route("/<task_id>", methods=["GET", "PUT", "DELETE"])
+@tasks_bp.route("/<task_id>", methods=["GET", "PUT", "DELETE", "PATCH"])
 def handle_task(task_id):
     task = Task.query.get_or_404(task_id)
-    
+
     if request.method == "GET":
         if task == None:
             return make_response("No matching task found", 404)
@@ -81,34 +82,45 @@ def handle_task(task_id):
                         {"id": task.task_id,
                         "title": task.title,
                         "description": task.description,
-                        "is_completed": bool(task.completed_at)
+                        "is_complete": bool(task.completed_at)
                     }
                     }
         return jsonify(commited_task), 200
     
-    elif request.method == "DELETE":
-        if task == None:
-            return make_response("Task does not exist", 404)
-        
+    elif request.method == "DELETE":        
         db.session.delete(task)
         db.session.commit()
         return jsonify(
         {f"details": 'Task 1 "Go on my daily walk 🏞" successfully deleted'}
     )
-# @tasks_bp.route("/tasks?sort=<sort_method>", methods=["GET"])        
-# def get_tasks_sorted(sort_method):
-#     if sort_method == "asc":
-#         tasks = Task.query.get.order_by(Task.title.asc()).all()
-#     elif sort_method == "desc":
-#         tasks = Task.query.get.order_by(Task.title.desc()).all()
-#     tasks_response = []
     
-#     for task in tasks:
-#         print(f"Task: {task.title}")
-#         tasks_response.append({
-#             "description": task.description,
-#             "is_complete": bool(task.completed_at),
-#             "id": task.task_id, 
-#             "title": task.title,
-#         })
-#     return make_response(tasks_response), 200     
+@tasks_bp.route("/<task_id>/mark_complete", methods=["PATCH"])
+def mark_task_completed(task_id):
+    task = Task.query.get_or_404(task_id)            
+
+    task.completed_at = datetime.now()
+    
+    db.session.commit() 
+    completed_task = {"task": 
+            {"id": task.task_id,
+            "title": task.title,
+            "description": task.description,
+            "is_complete": True
+        }
+        }
+    return jsonify(completed_task), 200 
+
+@tasks_bp.route("/<task_id>/mark_incomplete", methods=["PATCH"])
+def mark_task_incomplete(task_id):
+    task = Task.query.get_or_404(task_id)            
+    task.completed_at = None
+    
+    db.session.commit() 
+    incomplete_task = {"task": 
+            {"id": task.task_id,
+            "title": task.title,
+            "description": task.description,
+            "is_complete": bool(task.completed_at)
+        }
+        }
+    return jsonify(incomplete_task), 200 
