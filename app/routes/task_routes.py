@@ -21,12 +21,11 @@ def handle_tasks():
             
         tasks_response = []
         for task in tasks:
-            is_complete = True if task.completed_at else False
             tasks_response.append({
-                "id": task.task_id,
+                "id": task.id,
                 "title": task.title,
                 "description": task.description,
-                "is_complete": is_complete
+                "is_complete": task.is_complete()
             })
         return jsonify(tasks_response)
     elif request.method == "POST":
@@ -41,13 +40,12 @@ def handle_tasks():
         db.session.add(new_task)
         db.session.commit()
         
-        is_complete = True if new_task.completed_at else False
         return make_response({"task":
             {
-                "id": new_task.task_id,
+                "id": new_task.id,
                 "title": new_task.title,
                 "description": new_task.description,
-                "is_complete": is_complete
+                "is_complete": new_task.is_complete()
                 }
         }           
                              , 201)
@@ -59,13 +57,17 @@ def handle_task(task_id):
         return make_response(f"Task {task_id} not found", 404)
 
     if request.method == "GET":
-        is_complete = True if task.completed_at else False
-        return {
-            "task": {"id": task.task_id,
+        base_response = {
+                    "task": {"id": task.id,
                      "title": task.title,
                     "description": task.description,
-                    "is_complete": is_complete}
+                    "is_complete": task.is_complete()}
         }
+        if  not task.goal_id:
+            return  base_response
+        else:
+            base_response["task"]["goal_id"] = task.goal_id
+        return base_response 
     elif request.method == "PUT":
         form_data = request.get_json()
         task.title = form_data["title"],
@@ -73,13 +75,12 @@ def handle_task(task_id):
 
         db.session.commit()
         
-        is_complete = True if task.completed_at else False
         return make_response({
             "task":{
-                "id": task.task_id,
+                "id": task.id,
                 "title": task.title,
                 "description": task.description,
-                "is_complete": is_complete
+                "is_complete": task.is_complete()
             }
         }           
         )
@@ -88,7 +89,7 @@ def handle_task(task_id):
         db.session.commit()
         return make_response(
             {"details": 
-                f"Task {task.task_id} \"{task.title}\" successfully deleted"
+                f"Task {task.id} \"{task.title}\" successfully deleted"
             }
         )
     
@@ -114,12 +115,11 @@ def mark_complete(task_id):
     slack_text = f"Someone just completed the task {task.title}"
     post_to_slack(slack_text)
     
-    is_complete = True if task.completed_at else False
     return {
-            "task": {"id": task.task_id,
+            "task": {"id": task.id,
                     "title": task.title,
                     "description": task.description,
-                    "is_complete": is_complete}
+                    "is_complete": task.is_complete()}
         }
 
 @bp.route("/<task_id>/mark_incomplete", strict_slashes=False, methods=["PATCH"])
@@ -131,11 +131,9 @@ def mark_incomplete(task_id):
 
     task.completed_at = None
     db.session.commit()
-    
-    is_complete = True if task.completed_at else False
     return {
-            "task": {"id": task.task_id,
+            "task": {"id": task.id,
                     "title": task.title,
                     "description": task.description,
-                    "is_complete": is_complete}
+                    "is_complete": task.is_complete()}
         }
