@@ -2,6 +2,7 @@ from app import db
 from app.models.task import Task
 from flask import request, Blueprint, make_response, jsonify
 from sqlalchemy import desc
+from datetime import date
 
 tasks_bp = Blueprint("tasks", __name__, url_prefix="/tasks")
 
@@ -31,10 +32,6 @@ def handle_tasks():
             }
         }
         return db_task, 201
-        # db.session.add(new_task)
-        # db.session.commit()
-
-        # return make_response(f"Task {new_task.title} successfully created", 201)
     
     elif request.method == "GET":
         if request.args.get("sort") == "asc":
@@ -50,7 +47,6 @@ def handle_tasks():
                 "id": task.task_id,
                 "title": task.title,
                 "description": task.description,
-                # "is_complete": task.completed_at==True
                 "is_complete": bool(task.completed_at)
             })
         return jsonify(tasks_response)      
@@ -64,12 +60,10 @@ def handle_task(task_id):
 
     if request.method == "GET":
         selected_task = {
-            "task":
-            {
+            "task": {
                 "id": task.task_id,
                 "title": task.title,
                 "description": task.description,
-                # "is_complete": task.completed_at==True
                 "is_complete": bool(task.completed_at)
             }
         }
@@ -83,8 +77,7 @@ def handle_task(task_id):
         task.completed_at = request_body["completed_at"]
 
         updated_task = {
-            "task":
-            {
+            "task": {
                 "id": task.task_id,
                 "title": task.title,
                 "description": task.description,
@@ -103,3 +96,39 @@ def handle_task(task_id):
         db.session.delete(task)
         db.session.commit()
         return make_response(response, 200)
+
+@tasks_bp.route("/<task_id>/mark_complete", methods=["PATCH"])
+def handle_complete_task(task_id):
+    task = Task.query.get(task_id)
+    if task is None:
+        return make_response("", 404)
+
+    task.completed_at = date.today()
+    db.session.commit()
+    response = {
+        "task": {
+            "id": task.task_id,
+            "title": task.title,
+            "description": task.description,
+            "is_complete": True
+        }
+    }
+    return make_response(response, 200)
+
+@tasks_bp.route("/<task_id>/mark_incomplete", methods=["PATCH"])
+def handle_incomplete_task(task_id):
+    task = Task.query.get(task_id)
+    if task is None:
+        return make_response("", 404)
+
+    task.completed_at = None
+    db.session.commit()
+    response = {
+        "task": {
+            "id": task.task_id,
+            "title": task.title,
+            "description": task.description,
+            "is_complete": False
+        }
+    }
+    return make_response(response, 200)
