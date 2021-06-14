@@ -1,5 +1,7 @@
 from flask import current_app
 from app import db
+from sqlalchemy.orm import relationship
+from sqlalchemy import ForeignKey, update
 
 
 class Task(db.Model):

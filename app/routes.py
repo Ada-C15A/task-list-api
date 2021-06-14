@@ -31,7 +31,7 @@ def handle_goals():
         for goal in goals:
             goal_response.append({
                 "title": goal.title,
-                "goal_id": goal.goal_id
+                "id": goal.goal_id
             })
         return jsonify(goal_response), 200
     elif request.method == "POST":
@@ -44,7 +44,7 @@ def handle_goals():
         db.session.add(new_goal)
         db.session.commit()
         commited_goal = {"goal":
-            {"goal_id": new_goal.goal_id,
+            {"id": new_goal.goal_id,
             "title": new_goal.title
             }}
         
@@ -58,7 +58,7 @@ def handle_goal(goal_id):
         if goal == None:
             return make_response("No matching task found", 404)
         selected_goal = {"goal":
-        {"id": goal.goal_id,
+        {"goal_id": goal.goal_id,
         "title": goal.title
         }
         }
@@ -72,7 +72,7 @@ def handle_goal(goal_id):
         db.session.commit()
         
         commited_goal = {"goal":
-                        {"id": goal.goal_id,
+                        {"goal_id": goal.goal_id,
                         "title": goal.title
                     }
                     }
@@ -186,7 +186,7 @@ def mark_task_completed(task_id):
             {"id": task.task_id,
             "title": task.title,
             "description": task.description,
-            "is_complete": True
+            "is_completed": True
         }
         }
     return jsonify(completed_task), 200 
@@ -201,7 +201,7 @@ def mark_task_incomplete(task_id):
             {"id": task.task_id,
             "title": task.title,
             "description": task.description,
-            "is_complete": bool(task.completed_at)
+            "is_completed": bool(task.completed_at)
         }
         }
     return jsonify(incomplete_task), 200 
