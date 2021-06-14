@@ -8,7 +8,13 @@ tasks_bp = Blueprint("tasks", __name__, url_prefix="/tasks")
 @tasks_bp.route("", methods=["GET","POST"])
 def handle_tasks():
     if request.method == "GET":
-        tasks = Task.query.all()
+        task_query = request.args.get("sort")
+        if task_query == "asc":
+            tasks = Task.query.order_by(Task.title)
+        elif task_query == "desc":
+            tasks = Task.query.order_by(Task.title.desc()).all()
+        else:
+            tasks = Task.query.all()
         tasks_response = [] 
         for task in tasks:   
             tasks_response.append({
@@ -22,15 +28,22 @@ def handle_tasks():
         request_body = request.get_json()
         if "title" not in request_body or "description" not in request_body or "completed_at" not in request_body:
             return {"details": f"Invalid data"}, 400
+        # if request_body["completed_at"] is None:
+        #     request_body["completed_at"] = false
         new_task = Task(title=request_body["title"],
                         description=request_body["description"],
                         completed_at=request_body["completed_at"]
                         )
-
         db.session.add(new_task)
         db.session.commit()
 
-        return make_response(f"Task {new_task.title} successfully created", 201)
+        return make_response( 
+            {"task": {
+            "id": new_task.task_id,
+            "title": new_task.title,
+            "description": new_task.description,
+            "is_complete": bool(new_task.completed_at)
+        }}, 201)
 
 @tasks_bp.route("/<task_id>", methods=["GET", "PUT", "DELETE"])
 def handle_task(task_id):
