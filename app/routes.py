@@ -7,7 +7,14 @@ tasks_bp = Blueprint("tasks", __name__, url_prefix="")
 @tasks_bp.route("/tasks", strict_slashes=False, methods=["GET", "POST"])
 def handle_tasks():
     if request.method == "GET":
-        tasks = Task.query.all()
+        sort_method = request.args.get("sort")
+        if sort_method == "asc":
+            tasks = Task.query.order_by(Task.title.asc()).all() 
+        elif sort_method == "desc":
+            tasks = Task.query.order_by(Task.title.desc()).all() 
+        else:
+            tasks = Task.query.all()
+        
         tasks_response = []
         for task in tasks:
             tasks_response.append(
