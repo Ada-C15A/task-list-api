@@ -21,12 +21,17 @@ def handle_tasks():
             
         tasks_response = []
         for task in tasks:
-            tasks_response.append({
+            base_response = {
                 "id": task.id,
                 "title": task.title,
                 "description": task.description,
                 "is_complete": task.is_complete()
-            })
+            }            
+            if not task.goal_id:
+                tasks_response.append(base_response)
+            else:
+                base_response["goal_id"] = task.goal_id
+                tasks_response.append(base_response) 
         return jsonify(tasks_response)
     elif request.method == "POST":
         request_body = request.get_json()
