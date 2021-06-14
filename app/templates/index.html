@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <link rel="stylesheet" href="Index.css" />
+    <title>Another Task List API</title>
+    <style>
+      .styled-table {
+        border-collapse: collapse;
+        margin: 25px auto;
+        font-size: 0.9em;
+        font-family: sans-serif;
+        min-width: 400px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+      }
+
+      .styled-table thead tr {
+        background-color: #3b0d34;
+        color: #ffffff;
+        text-align: left;
+      }
+
+      .styled-table th,
+      .styled-table td {
+        padding: 12px 15px;
+      }
+      .styled-table tbody tr {
+        border-bottom: 1px solid #dddddd;
+      }
+
+      .styled-table tbody tr:nth-of-type(even) {
+        background-color: #f3f3f3;
+      }
+
+      .styled-table tbody tr:last-of-type {
+        border-bottom: 2px solid #3b0d34;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1 style="text-align: center">Available Routes</h1>
+      <table class="styled-table">
+        <thead>
+          <tr>
+            <th>PATH</th>
+            <th>METHOD</th>
+            <th>REQUEST BODY</th>
+            <th>DESCRIPTION</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>/tasks</td>
+            <td>GET</td>
+            <td>N/A</td>
+            <td>
+              Get all tasks. Optional parameter 'sort=&ltasc or desc&gt' to sort
+              by task title.
+            </td>
+          </tr>
+
+          <tr>
+            <td>/tasks</td>
+            <td>POST</td>
+            <td>'title', 'description', 'completed_at'</td>
+            <td>Create a task. 'completed_at' can be null.</td>
+          </tr>
+          <tr>
+            <td>/tasks/&lttask_id&gt</td>
+            <td>GET</td>
+            <td>N/A</td>
+            <td>Get details for a single task.</td>
+          </tr>
+          <tr>
+            <td>/tasks/&lttask_id&gt</td>
+            <td>PUT</td>
+            <td>'title', 'description', 'completed_at'</td>
+            <td>Update details for a single task.</td>
+          </tr>
+          <tr>
+            <td>/tasks/&lttask_id&gt</td>
+            <td>DELETE</td>
+            <td>N/A</td>
+            <td>Delete a single task.</td>
+          </tr>
+          <tr>
+            <td>/tasks/&lttask_id&gt/mark_complete</td>
+            <td>PATCH</td>
+            <td>N/A</td>
+            <td>Set 'completed_at' for the given task to the current time.</td>
+          </tr>
+          <tr>
+            <td>/tasks/&lttask_id&gt/mark_incomplete</td>
+            <td>PATCH</td>
+            <td>N/A</td>
+            <td>Set 'completed_at' for the given task to null.</td>
+          </tr>
+          <tr>
+            <td>/goals</td>
+            <td>GET</td>
+            <td>N/A</td>
+            <td>Get a list of all goals.</td>
+          </tr>
+          <tr>
+            <td>/goals</td>
+            <td>POST</td>
+            <td>"title"</td>
+            <td>Create a goal.</td>
+          </tr>
+          <tr>
+            <td>/goals/&ltgoal_id&gt</td>
+            <td>GET</td>
+            <td>N/A</td>
+            <td>Get deails for a single goal.</td>
+          </tr>
+          <tr>
+            <td>/goals/&ltgoal_id&gt</td>
+            <td>PUT</td>
+            <td>'title'</td>
+            <td>Update details for a single goal.</td>
+          </tr>
+          <tr>
+            <td>/goals/&ltgoal_id&gt</td>
+            <td>DELETE</td>
+            <td>N/A</td>
+            <td>Delete a single goal.</td>
+          </tr>
+          <tr>
+            <td>/goals/&ltgoal_id&gt/tasks</td>
+            <td>GET</td>
+            <td>N/A</td>
+            <td>Get all the tasks for a single goal.</td>
+          </tr>
+          <tr>
+            <td>/goals/&ltgoal_id&gt/tasks</td>
+            <td>POST</td>
+            <td>'task_ids':['task_id']</td>
+            <td>Set the goal_id to for each task in the request body.</td>
+          </tr>
+        </tbody>
+      </table>
+    </main>
+    <script src="Index.js"></script>
+  </body>
+</html>
