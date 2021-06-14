@@ -178,7 +178,7 @@ def make_task_incomplete(task_id):
             "id": task.task_id,
             "title": task.title,
             "description": task.description,
-            "is_complete": task.completed_at
+            "is_complete":  False
         }
     }
     return jsonify(response_body), 200
