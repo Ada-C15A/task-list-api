@@ -1,5 +1,6 @@
 from app import db
 from app.models.task import Task
+from app.models.goal import Goal
 from flask import request, Blueprint, make_response, jsonify
 from datetime import datetime
 import os
@@ -129,3 +130,29 @@ def post_to_slack(text):
         "Authorization": f"Bearer {slack_token}"
     }
     requests.post(slack_path, params=query_params, headers=headers)
+
+goal_bp = Blueprint("goal_bp", __name__, url_prefix="/goals")
+
+@goal_bp.route("", methods=["GET", "POST"])
+def handle_goals():
+    if request.method == "GET":
+        goals = Goal.query.all()
+        goals_response = []
+        for goal in goals:
+            goals_response.append({
+                "id": goal.id,
+                "title": goal.title
+            })
+        return jsonify(goals_response)
+    elif request.method == "POST":
+        request_body = request.get_json()
+        if "title" not in request_body:
+            return make_response({"details": "Invalid data"}, 400)   
+        new_goal = Goal(title=request_body["title"])
+            
+        db.session.add(new_goal)
+        db.session.commit()
+        goal_response_body = {"goal": {"id": new_goal.id, "title": new_goal.title}}
+        
+        return jsonify(goal_response_body), 201
+
