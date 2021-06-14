@@ -2,6 +2,8 @@ from app import db
 from app.models.task import Task
 from flask import request, Blueprint, make_response, jsonify
 from datetime import datetime
+import os
+import requests
 
 tasks_bp = Blueprint("tasks_bp", __name__, url_prefix="/tasks")
 
@@ -116,3 +118,14 @@ def handle_task_incomplete(task_id):
         }}
     return jsonify(patched_task),200
 
+def post_to_slack(text):
+    slack_token = os.environ.get("SLACK_TOKEN_POST")
+    slack_path = "https://slack.com/api/chat.postMessage"
+    query_params = {
+        "channel": "task-notification",
+        "text": text,
+    }
+    headers = {
+        "Authorization": f"Bearer {slack_token}"
+    }
+    requests.post(slack_path, params=query_params, headers=headers)
