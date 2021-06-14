@@ -13,13 +13,17 @@ def tasks():
         tasks_response = []
 
         for task in tasks:
+            is_complete = task.completed_at
+            # if task.completed_at != None:
+            #     is_complete == True
+            #     print(is_complete)
             tasks_response.append({
                 "id": task.id,
                 "title": task.title,
                 "description": task.description,
-                "completed_at": task.completed_at
+                "is_complete": task.completed_at
             })
-        return jsonify(tasks_response, 200)
+        return jsonify(tasks_response)
 
     elif request.method == "POST":
         request_body = request.get_json(force=True)
@@ -33,32 +37,41 @@ def tasks():
         db.session.commit()
 
         return {
-            "id": new_task.id,
-            "title": new_task.title,
-            "description": new_task.description,
-            "is_complete": False
+            "task": {
+                "id": new_task.id,
+                "title": new_task.title,
+                "description": new_task.description,
+                "is_complete": False
+            }
         }, 201
 
 
 @task_list_api_bp.route("/<task_id>", methods=["GET", "DELETE", "PUT"])
 def handle_task(task_id):
     task = Task.query.get(task_id)
-    print(task_id)
     if task is None:
         return make_response("{task_id} doesnt exist", 404)
 
+    # is_complete = task.completed_at
+    # if task.completed_at != None:
+    #     is_complete == True
+    # print(is_complete)
+
     if request.method == "GET":
-        is_complete = True if task.completed_at else False
-        return {
-            "task": {"id": task.id,
-                     "title": task.title,
-                     "description": task.description,
-                     "is_complete": is_complete}
+        select_task = {
+            "task": {
+                "id": task.id,
+                "title": task.title,
+                "description": task.description,
+                "is_complete": task.completed_at
+            }
         }
+        return jsonify(select_task), 200
+
     elif request.method == "DELETE":
         db.session.delete(task)
         db.session.commit()
-        return make_response(f"Task #{task.id} deleted sucessfully")
+        return make_response({"details": f"Task {task.id} \"{task.title}\" successfully deleted"})
     elif request.method == "PUT":
         form_data = request.get_json()
         task.title = form_data["title"]
@@ -72,6 +85,6 @@ def handle_task(task_id):
                 "id": 1,
                 "title": "Updated Task Title",
                 "description": "Updated Test Description",
-                "is_complete": false
+                "is_complete": True if task.completed_at else False
             }
         }, 200
