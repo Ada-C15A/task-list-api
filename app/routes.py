@@ -2,8 +2,9 @@ from flask import Blueprint
 from app.models.task import Task
 from app import db
 from flask import request, Blueprint, make_response, jsonify
+from datetime import datetime
 
-tasks_bp = Blueprint("tasks", __name__, url_prefix="/tasks") #/tasks?
+tasks_bp = Blueprint("tasks", __name__, url_prefix="/tasks") 
 
 @tasks_bp.route("", methods=["GET", "POST"])
 def handle_tasks():
@@ -52,7 +53,7 @@ def handle_tasks():
             tasks = Task.query.order_by(Task.title.desc()).all()
         else:
             tasks = Task.query.all()
-            
+
         tasks_response = []
         for task in tasks:
             tasks_response.append({
@@ -63,7 +64,7 @@ def handle_tasks():
             })
         return jsonify(tasks_response)
 
-@tasks_bp.route("/<task_id>", methods=["GET", "PUT", "DELETE"])    
+@tasks_bp.route("/<task_id>", methods=["GET", "PUT", "DELETE", "PATCH"])    
 def handle_task(task_id):
     task = Task.query.get(task_id)
     if task is None:
@@ -93,6 +94,7 @@ def handle_task(task_id):
         }}
         db.session.add(task)
         db.session.commit()
+
         return make_response(jsonify(updated_task)), 200
 
     elif request.method == "DELETE":
@@ -103,6 +105,38 @@ def handle_task(task_id):
                 f'Task {task.task_id} \"{task.title}\" successfully deleted'
             }
         return jsonify(task_response_body), 200
+
+@tasks_bp.route("/<task_id>/mark_complete", methods=["PATCH"])
+def mark_task_complete(task_id):
+    task = Task.query.get_or_404(task_id)
+
+    task.completed_at = datetime.now()
+
+    db.session.commit()
+    completed_task = {"task": 
+
+            {"id": task.task_id,
+            "title": task.title,
+            "description": task.description,
+            "is_complete": bool(task.completed_at)
+        }}
+    return jsonify(completed_task), 200
+
+@tasks_bp.route("/<task_id>/mark_incomplete", methods=["PATCH"])
+def mark_task_incomplete(task_id):
+    task = Task.query.get_or_404(task_id)
+
+    task.completed_at = None
+    db.session.commit()
+    incompleted_task = {"task": 
+
+            {"id": task.task_id,
+            "title": task.title,
+            "description": task.description,
+            "is_complete": bool(task.completed_at)
+        }}
+    return jsonify(incompleted_task), 200
+
 
 # https://github.com/OhCloud/task-list-api
 # https://github.com/Ada-C15A/task-list-api/pull/3
