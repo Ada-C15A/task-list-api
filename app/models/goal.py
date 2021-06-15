@@ -8,4 +8,4 @@ from sqlalchemy.orm import relationship
 class Goal(db.Model):
     goal_id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String)
-    task_ids = db.relationship('Task', backref='goal', lazy=True)
+    tasks = db.relationship('Task', backref='goal', lazy=True)
