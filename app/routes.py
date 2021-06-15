@@ -90,14 +90,21 @@ def handle_goal_tasks(goal_id):
     goal = Goal.query.get_or_404(goal_id)
     if request.method == "GET":
         tasks = []
-        for task in goal.tasks_ids:
-            tasks.append(task)
-        return {
+        for task in goal.tasks:
+            single_task= {
+            "id": task.task_id,
+            "goal_id": goal.goal_id,
+            "title": task.title,
+            "description": task.description,
+            "is_complete": bool(task.completed_at)
+        }
+            tasks.append(single_task)
+        return make_response ({
             "id": goal.goal_id,
             "title": goal.title,
             "tasks": tasks
-        }
-        
+        })
+    
     if request.method == "POST":
         goal.tasks =[]
         
@@ -108,6 +115,7 @@ def handle_goal_tasks(goal_id):
             task = Task.query.get_or_404(t_id)
             goal.tasks.append(task)
             
+        db.session.add(goal)    
         db.session.commit()
 
         response_task_ids = []
@@ -174,14 +182,26 @@ def handle_task(task_id):
         if task == None:
             return make_response("No matching task found", 404)
         if request.method == "GET":
-            selected_task = {"task":
-            {"task_id": task.task_id,
-            "title": task.title,
-            "description": task.description,
-            "is_complete": task.is_complete
-            }
-            }
-        return selected_task
+            if task.goal_id == None:  
+                selected_task = {"task":
+                {"task_id": task.task_id,
+                "title": task.title,
+                "description": task.description,
+                "is_complete": task.is_complete
+                }
+                }
+                return selected_task
+            else:
+                return make_response ({
+                    "task": {
+                    "id": task.task_id,
+                    "goal_id": task.goal_id,
+                    "title": task.title,
+                    "description": task.description,
+                    "is_complete": task.is_complete
+                    }
+                })
+        
     elif request.method == "PUT":
         form_data = request.get_json()
         
