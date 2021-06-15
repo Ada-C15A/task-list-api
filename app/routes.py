@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 
 tasks_bp = Blueprint("tasks", __name__, url_prefix="/tasks") 
 goals_bp = Blueprint("goals", __name__, url_prefix="/goals") 
+
 load_dotenv()
 
 def post_message_to_slack(text):
@@ -27,6 +28,7 @@ def handle_goals():
     if request.method == "POST": 
         request_body = request.get_json()
         title = request_body.get("title")
+        task_ids = request.body["task_ids"]
 
         if not title:
             return jsonify({"details": "Invalid data"}), 400
@@ -38,7 +40,8 @@ def handle_goals():
 
         committed_goal = {"goal": 
             {"id": new_goal.goal_id,
-            "title": new_goal.title
+            "title": new_goal.title,
+            "task_ids": new_goal.task_ids
             }}
 
         return jsonify(committed_goal), 201
@@ -50,7 +53,8 @@ def handle_goals():
         for goal in goals:
             goals_response.append({
                 "title": goal.title,
-                "id": goal.goal_id
+                "id": goal.goal_id,
+                "tasks": goal.task_ids
             })
 
         return jsonify(goals_response), 200
@@ -62,10 +66,16 @@ def handle_goal(goal_id):
     if request.method =="GET":
         if goal == None:
             return make_response("No matching goal found"), 404
+
+        tasks = []
+
+        for item in goal.task_ids:
+            tasks.append(item)
         
         selected_goal = {"goal": 
             {"id": goal.goal_id,
-            "title": goal.title
+            "title": goal.title,
+            "tasks": tasks
             }}
         return selected_goal
     
@@ -77,7 +87,8 @@ def handle_goal(goal_id):
 
         committed_goal = {"goal": 
             {"id": goal.goal_id,
-            "title": goal.title
+            "title": goal.title,
+            "task_ids": goal.task_ids
             }}
         return jsonify(committed_goal), 200
     
@@ -86,11 +97,47 @@ def handle_goal(goal_id):
         db.session.commit()
         goal_response_body = {
             "details":
-                f'Goal {goal.goal_id} \"{goal.title}\" successfully deleted'
+                f'Goal {goal.goal_id} successfully deleted'
             }
         return jsonify(goal_response_body)
 
+@goals_bp.route("/<goal_id>/tasks", methods=["GET", "POST"])
+def handle_goal_tasks(goal_id):
+    goal = Goal.query.get_or_404(goal_id)
 
+    if request.method == "GET":
+        task_list = []
+        for task in goal.task_ids:
+            task_list.append(task)
+        
+        goal_and_tasks = {"goal": 
+            {"id": goal.goal_id,
+            "title": goal.title,
+            "task_ids": task_list
+            }}
+        return jsonify(goal)
+
+    if request.method == "POST":
+        goal_tasks = []
+        form_data = request.get_json()
+        task_ids = form_data["task_ids"]
+
+        for task_id in task_ids:
+            task = Task.query.get_or_404(task_id)
+            goal_tasks.append(task_id)
+        
+        db.session.commit()
+
+        task_ids_response = []
+
+        for item in goal_tasks:
+            task_ids_response.append(item)
+            result_response_task_ids = ({
+            "id": goal.goal_id,
+            "task_ids": task_ids_response
+        })
+
+        return result_response_task_ids
 
 @tasks_bp.route("", methods=["GET", "POST"])
 def handle_tasks():
@@ -146,7 +193,8 @@ def handle_tasks():
                 "id": task.task_id,
                 "title": task.title,
                 "description": task.description,
-                "is_complete": bool(task.completed_at)
+                "is_complete": bool(task.completed_at),
+                "goal": task.goal_id
             })
         return jsonify(tasks_response)
 
