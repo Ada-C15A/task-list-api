@@ -2,6 +2,7 @@ from app import db
 from flask import Blueprint, json
 from sqlalchemy import asc, desc 
 from app.models.task import Task
+from app.models.goal import Goal
 from datetime import datetime
 from sqlalchemy.sql.functions import now
 from flask import request, make_response, jsonify
@@ -12,6 +13,8 @@ import requests
 load_dotenv()
 
 task_bp = Blueprint("tasks", __name__, url_prefix="/tasks")
+goals_bp = Blueprint("goals", __name__, url_prefix="/goals")
+
 
 # return all tasks
 @task_bp.route("/", methods=["GET", "POST"], strict_slashes = False)
@@ -182,3 +185,72 @@ def make_task_incomplete(task_id):
         }
     }
     return jsonify(response_body), 200
+
+
+# goals route
+@goals_bp.route("", methods = ["POST", "GET"], strict_slashes = False)
+def handle_goals():
+    if request.method == "POST":
+        request_body = request.get_json()
+        if "title" not in request_body:
+            return {"details": "Invalid data"}, 400
+        new_goal = Goal(title = request_body["title"])
+        db.session.add(new_goal)
+        db.session.commit()
+        response_body = {
+            "goal": new_goal.goal_to_json()
+        }
+        return jsonify(response_body), 201
+
+    #get all goals
+    if request.method == "GET":
+        goals = Goal.query.all()
+        response_body = []
+        for a_goal in goals:
+            response_body.append(a_goal.goal_to_json())
+        return jsonify(response_body), 200
+
+# get one goal
+@goals_bp.route("/<goal_id>", methods=["GET", "PUT", "DELETE"], strict_slashes = False)
+def handle_goal(goal_id):
+    goal = Goal.query.get(goal_id)
+
+    if request.method == "GET":
+        
+        if goal is None:
+            return make_response("", 404)
+
+        response_body = {
+            "goal": goal.goal_to_json()
+        }
+        return jsonify(response_body), 200
+
+    # Update a goal
+    elif request.method == "PUT":
+        if goal is None:
+            return make_response(f"Goal #{goal_id} not found"), 404
+        form_data = request.get_json()
+
+        if "title" not in form_data:
+            return {"details": "Invalid data"}, 400
+
+        goal.title = form_data["title"]
+        db.session.commit()
+
+        response_body = {
+            "goal": goal.goal_to_json()
+        }
+        return jsonify(response_body), 200
+
+    # Delete a goal
+    elif request.method == "DELETE":
+        if not goal:
+            return "", 404
+        db.session.delete(goal)
+        db.session.commit()
+
+        return {
+            "details": f"Goal {goal.goal_id} \"{goal.title}\" successfully deleted"
+        }
+
+x
