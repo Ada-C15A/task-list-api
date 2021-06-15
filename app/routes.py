@@ -9,20 +9,34 @@ task_list_api_bp = Blueprint("task_list_api", __name__)
 @task_list_api_bp.route("/", methods=["GET", "POST"])
 def tasks():
     if request.method == "GET":
+        tasks_sort = request.args.get("sort")
         tasks = Task.query.all()
+
+        if tasks_sort:
+            if tasks_sort == "asc":
+                tasks = Task.query.order_by(Task.title).all()
+            elif tasks_sort == "desc":
+                tasks = Task.query.order_by(Task.title.desc()).all()
+            else:
+                tasks = Task.query.all()
+
         tasks_response = []
+        # is_complete = task.completed_at
 
         for task in tasks:
             is_complete = task.completed_at
-            # if task.completed_at != None:
-            #     is_complete == True
-            #     print(is_complete)
+            if task.completed_at != None:
+                is_complete = True
+            elif tasks_sort and task.completed_at is None:
+                is_complete = False
+
             tasks_response.append({
                 "id": task.id,
                 "title": task.title,
                 "description": task.description,
-                "is_complete": task.completed_at
+                "is_complete": is_complete
             })
+
         return jsonify(tasks_response)
 
     elif request.method == "POST":
