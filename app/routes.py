@@ -34,6 +34,7 @@ def handle_goals():
                 "id": goal.goal_id
             })
         return jsonify(goal_response), 200
+    
     elif request.method == "POST":
         request_body = request.get_json()
         title = request_body.get("title")
@@ -49,16 +50,13 @@ def handle_goals():
             "title": new_goal.title
             }}
         
-    return jsonify(commited_goal), 201
+    return (commited_goal), 201
 
 @goals_bp.route("/<goal_id>", methods=["GET", "PUT", "DELETE"])
 def handle_goal(goal_id):
     goal = Goal.query.get_or_404(goal_id)
 
     if request.method == "GET":
-        tasks = []
-        for item in goal.task_ids:
-            tasks.append(item)
         selected_goal = {"goal":
             {"id": goal.goal_id,
             "title": goal.title
@@ -91,24 +89,35 @@ def handle_goal(goal_id):
 def handle_goal_tasks(goal_id):
     goal = Goal.query.get_or_404(goal_id)
     if request.method == "GET":
-        return (goal)
+        tasks = []
+        for task in goal.tasks_ids:
+            tasks.append(task)
+        return {
+            "id": goal.goal_id,
+            "title": goal.title,
+            "tasks": tasks
+        }
+        
     if request.method == "POST":
-        goal_tasks = []
+        goal.tasks =[]
+        
         form_data = request.get_json()
         task_ids = form_data['task_ids']
 
-        tasks = [Task.query.get(task_id) for task_id in task_ids]
-        goal.tasks = tasks
-        # for t_id in task_ids:
-        #     task = Task.query.get(t_id)
-        #     task.goal_id = (t_id)
+        for t_id in task_ids:
+            task = Task.query.get_or_404(t_id)
+            goal.tasks.append(task)
             
         db.session.commit()
 
-        return jsonify({
+        response_task_ids = []
+        for task in goal.tasks:
+            response_task_ids.append(task.task_id)
+            
+        return {
             "id": goal.goal_id,
-            "task_ids": goal.tasks
-        })
+            "task_ids": response_task_ids
+        }
 
 @tasks_bp.route("", methods=["POST", "GET"])
 def handle_tasks():
