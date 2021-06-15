@@ -1,144 +1,113 @@
 from app import db
 from app.models.task import Task
+from .route_helpers import *
 from flask import Blueprint, request, make_response, jsonify
-from datetime import datetime
-import os
-import requests
+import datetime
 
 bp = Blueprint("tasks", __name__, url_prefix="/tasks")
 
-@bp.route("", strict_slashes=False, methods=["GET", "POST"])
-def handle_tasks():
-    if request.method == "GET":
-        sort_query = request.args.get("sort")
-        
+@bp.route("", methods=["GET"])
+def get_tasks():
+    sort_query = request.args.get("sort")
+    if sort_query:
         if sort_query == "asc":
             tasks = Task.query.order_by(Task.title).all()
         elif sort_query == "desc":
             tasks = Task.query.order_by(Task.title.desc()).all()
         else:
-            tasks = Task.query.all()
-            
-        tasks_response = []
-        for task in tasks:
-            base_response = {
-                "id": task.id,
-                "title": task.title,
-                "description": task.description,
-                "is_complete": task.is_complete()
-            }            
-            if not task.goal_id:
-                tasks_response.append(base_response)
-            else:
-                base_response["goal_id"] = task.goal_id
-                tasks_response.append(base_response) 
-        return jsonify(tasks_response)
-    elif request.method == "POST":
-        request_body = request.get_json()
-        for attribute in {"title", "description", "completed_at"}:
-            if attribute not in request_body:
-                return make_response({"details": "Invalid data"}, 400)   
-        new_task = Task(title=request_body["title"],
-                        description=request_body["description"],
-                        completed_at=request_body["completed_at"])
-            
-        db.session.add(new_task)
-        db.session.commit()
+            return make_response(f"{sort_query} is not a valid sort parameter. Please use sort=asc or sort=desc.", 400)
+    else:
+        tasks = Task.query.all()
         
-        return make_response({"task":
-            {
-                "id": new_task.id,
-                "title": new_task.title,
-                "description": new_task.description,
-                "is_complete": new_task.is_complete()
-                }
-        }           
-                             , 201)
+    return jsonify([task.to_json() for task in tasks])
 
-@bp.route("/<task_id>", strict_slashes=False, methods=["GET", "PUT", "DELETE"])
-def handle_task(task_id):
-    task = Task.query.get(task_id)
-    if not task:
-        return make_response(f"Task {task_id} not found", 404)
+@bp.route("", methods=["POST"])
+def create_task():
+    request_body = request.get_json()
+    for attribute in {"title", "description", "completed_at"}:
+        if attribute not in request_body:
+            return make_response({"details": "Invalid data"}, 400)   
 
-    if request.method == "GET":
-        base_response = {
-                    "task": {"id": task.id,
-                     "title": task.title,
-                    "description": task.description,
-                    "is_complete": task.is_complete()}
-        }
-        if  not task.goal_id:
-            return  base_response
-        else:
-            base_response["task"]["goal_id"] = task.goal_id
-        return base_response 
-    elif request.method == "PUT":
-        form_data = request.get_json()
-        task.title = form_data["title"],
-        task.description = form_data["description"]
+    if request_body["completed_at"]:
+        date_time_response = validate_datetime(request_body["completed_at"])
+        if type(date_time_response) != datetime.datetime:
+            return date_time_response
 
-        db.session.commit()
-        
-        return make_response({
-            "task":{
-                "id": task.id,
-                "title": task.title,
-                "description": task.description,
-                "is_complete": task.is_complete()
-            }
-        }           
-        )
-    elif request.method == "DELETE":
-        db.session.delete(task)
-        db.session.commit()
-        return make_response(
-            {"details": 
-                f"Task {task.id} \"{task.title}\" successfully deleted"
-            }
-        )
+    new_task = Task(title=request_body["title"],
+                    description=request_body["description"])
     
-def post_to_slack(text):
-    slack_token = os.environ.get("SLACK_POST_MESSAGE_API_TOKEN")
-    slack_path = "https://slack.com/api/chat.postMessage"
-    query_params ={
-        "channel": "task-notifications",
-        "text": text, 
-    }
-    headers = {"Authorization": f"Bearer {slack_token}"}
-    requests.post(slack_path, params = query_params, headers = headers)   
+    new_task.completed_at = date_time_response.strftime("%m/%d/%Y, %H:%M:%S") if request_body["completed_at"] else None
+        
+    db.session.add(new_task)
+    db.session.commit()
+    
+    return make_response({"task": new_task.to_json()}, 201)
 
-@bp.route("/<task_id>/mark_complete", strict_slashes=False, methods=["PATCH"])
+@bp.route("/<task_id>", methods=["GET"])
+def get_task(task_id):
+    task_response = validate_item("task", task_id)
+    if type(task_response) != Task:
+        return task_response
+
+    return {"task": task_response.to_json()}
+
+@bp.route("/<task_id>", methods=["PUT"])
+def update_task(task_id):
+    task_response = validate_item("task", task_id)
+    if type(task_response) != Task:
+        return task_response    
+
+    form_data = request.get_json()
+    for attribute in {"title", "description"}:
+        if attribute not in form_data:
+            return make_response({"details": "Invalid data"}, 400)   
+    
+    if form_data["completed_at"]:
+        date_time_response = validate_datetime(form_data["completed_at"])
+        if type(date_time_response) != datetime.datetime:
+            return date_time_response
+    
+    task_response.title = form_data["title"],
+    task_response.description = form_data["description"]
+    task_response.completed_at = date_time_response.strftime("%m/%d/%Y, %H:%M:%S") if form_data["completed_at"] else None
+    
+    db.session.commit()
+    
+    return {"task": task_response.to_json()}
+
+@bp.route("/<task_id>", methods=["DELETE"])
+def delete_task(task_id):
+    task_response = validate_item("task", task_id)
+    if type(task_response) != Task:
+        return task_response   
+
+    db.session.delete(task_response)
+    db.session.commit()
+    return make_response(
+        {"details": 
+            f"Task {task_response.id} \"{task_response.title}\" successfully deleted"
+        }
+    )
+
+@bp.route("/<task_id>/mark_complete", methods=["PATCH"])
 def mark_complete(task_id):
-    task = Task.query.get(task_id)
-    if not task:
-        return make_response(f"Task {task_id} not found", 404)
+    task_response = validate_item("task", task_id)
+    if type(task_response) != Task:
+        return task_response   
 
-    task.completed_at = datetime.utcnow()
+    task_response.completed_at = datetime.datetime.utcnow()
     db.session.commit()
     
-    slack_text = f"Someone just completed the task {task.title}"
+    slack_text = f"Someone just completed the task {task_response.title}"
     post_to_slack(slack_text)
-    
-    return {
-            "task": {"id": task.id,
-                    "title": task.title,
-                    "description": task.description,
-                    "is_complete": task.is_complete()}
-        }
+    return {"task": task_response.to_json()}
 
-@bp.route("/<task_id>/mark_incomplete", strict_slashes=False, methods=["PATCH"])
+@bp.route("/<task_id>/mark_incomplete", methods=["PATCH"])
 def mark_incomplete(task_id):
+    task_response = validate_item("task", task_id)
+    if type(task_response) != Task:
+        return task_response   
     
-    task = Task.query.get(task_id)
-    if not task:
-        return make_response(f"Task {task_id} not found", 404)
-
-    task.completed_at = None
+    task_response.completed_at = None
     db.session.commit()
-    return {
-            "task": {"id": task.id,
-                    "title": task.title,
-                    "description": task.description,
-                    "is_complete": task.is_complete()}
-        }
+    return {"task": task_response.to_json()}
