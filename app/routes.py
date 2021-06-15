@@ -22,7 +22,7 @@ def handle_tasks():
         for task in tasks:
             tasks_response.append(
                 {
-                "id": task.task_id,
+                "id": task.id,
                 "title": task.title,
                 "description": task.description,
                 "is_complete": task.completed_at or False
@@ -47,7 +47,7 @@ def handle_tasks():
         db.session.add(new_task)
         db.session.commit()
         return make_response(jsonify({"task": { # todo - not really using jsonify?
-            "id": new_task.task_id,
+            "id": new_task.id,
             "title": new_task.title,
             "description": new_task.description,
             "is_complete": set_task_status
@@ -61,14 +61,21 @@ def handle_tast(task_id):
         return make_response(f"Invalid data", 404)
 
     if request.method == "GET":
-        return {
+
+        get_one_task_response = {
             "task": {
-            "id": task.task_id,
+            "id": task.id,
             "title": task.title,
             "description": task.description,
             "is_complete": task.completed_at or False
             } 
         }
+        if  not task.goal_id:
+            return get_one_task_response
+        else:
+            get_one_task_response["task"]["goal_id"] = task.goal_id
+        return get_one_task_response 
+
     elif request.method == "PUT":
         form_data = request.get_json()
         task.title = form_data["title"],
@@ -80,7 +87,7 @@ def handle_tast(task_id):
         set_task_status = True if task.completed_at else False
 
         return make_response(jsonify({"task": {
-            "id": task.task_id,
+            "id": task.id,
             "title": task.title,
             "description": task.description,
             "is_complete": set_task_status
@@ -103,7 +110,7 @@ def mark_complete(task_id):
     posts_message_to_slack(task)
 
     return make_response(jsonify({"task": {
-            "id": task.task_id,
+            "id": task.id,
             "title": task.title,
             "description": task.description,
             "is_complete": True
@@ -120,7 +127,7 @@ def mark_incomplete(task_id):
 
     return make_response(jsonify({
         "task": {
-            "id": task.task_id,
+            "id": task.id,
             "title": task.title,
             "description": task.description,
             "is_complete": False
@@ -136,7 +143,14 @@ def posts_message_to_slack(task):
         "text": f"Task completed: {task.title}", 
     }
     headers = {"Authorization": f"Bearer {slack_token}"}
-    requests.post(slack_path, params = params, headers = headers) 
+    requests.post(slack_path, params = params, headers = headers)
+
+
+
+
+
+
+
 # todo - separate out the route files
 from app.models.goal import Goal
 
@@ -149,7 +163,7 @@ def handle_goals():
         goals_response = []
         for goal in goals:
             goals_response.append({
-                "id": goal.goal_id,
+                "id": goal.id,
                 "title": goal.title
             })
         return jsonify(goals_response)
@@ -158,13 +172,13 @@ def handle_goals():
         if "title" not in request_body:
             return make_response({"details": "Invalid data"}, 400)   
         new_goal = Goal(title=request_body["title"])
-
+            
         db.session.add(new_goal)
         db.session.commit()
-
+        
         return make_response({"goal":
             {
-                "id": new_goal.goal_id,
+                "id": new_goal.id,
                 "title": new_goal.title
                 }
         }, 201)
@@ -177,18 +191,18 @@ def handle_goal(goal_id):
 
     if request.method == "GET":
         return {
-            "goal": {"id": goal.goal_id,
-            "title": goal.title}
+            "goal": {"id": goal.id,
+                    "title": goal.title}
         }
     elif request.method == "PUT":
         form_data = request.get_json()
         goal.title = form_data["title"],
 
         db.session.commit()
-
+        
         return make_response({
             "goal":{
-                "id": goal.goal_id,
+                "id": goal.id,
                 "title": goal.title
             }
         }           
@@ -198,6 +212,49 @@ def handle_goal(goal_id):
         db.session.commit()
         return make_response(
             {"details": 
-                f"Goal {goal.goal_id} \"{goal.title}\" successfully deleted"
+                f"Goal {goal.id} \"{goal.title}\" successfully deleted"
             }
-        ) 
+        )
+        
+@goals_bp.route("/<goal_id>/tasks", strict_slashes=False, methods=["GET"])
+def get_goal_tasks(goal_id):
+    goal = Goal.query.get(goal_id)
+    if not goal:
+        return make_response(f"Goal {goal_id} not found", 404)
+    tasks = goal.tasks
+    tasks_details = []
+    for task in tasks:
+        task_dict = {
+            "id": task.id,
+            "goal_id": goal.id,
+            "title": task.title,
+            "description": task.description,
+            "is_complete": task.completed_at or False
+        }
+        tasks_details.append(task_dict)
+    return make_response(
+        {
+            "id": goal.id,
+            "title": goal.title,
+            "tasks": tasks_details
+        })       
+
+@goals_bp.route("/<goal_id>/tasks", strict_slashes=False, methods=["POST"])
+def add_goal_tasks(goal_id):
+    goal = Goal.query.get(goal_id)
+    if not goal:
+        return make_response(f"Goal {goal_id} not found", 404)
+    
+    request_body = request.get_json()   
+    for id in request_body["task_ids"]:
+        task = Task.query.get(id)
+        goal.tasks.append(task)
+            
+        db.session.add(goal)
+        db.session.commit()
+        
+    return make_response(
+            {
+                "id": goal.id,
+                "task_ids": request_body["task_ids"]
+                })       
