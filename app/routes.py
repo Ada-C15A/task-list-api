@@ -1,10 +1,25 @@
-from flask import Blueprint
+import re
 from app.models.task import Task
-from app import db
-from flask import request, Blueprint, make_response, jsonify
+from app import db 
+from flask import request, Blueprint, make_response, jsonify#
 from datetime import datetime
+from dotenv import load_dotenv
+import os
+import json, requests
 
 tasks_bp = Blueprint("tasks", __name__, url_prefix="/tasks") 
+
+load_dotenv()
+
+def post_message_to_slack(text):
+    SLACK_TOKEN = os.environ.get('SLACKBOT_TOKEN')
+    slack_path = "https://slack.com/api/chat/postMessage"
+    query_params = {
+        'channel': 'task-notifications',
+        'text': text 
+    }
+    headers = {'Authorization': f"Bearer {SLACK_TOKEN}"}
+    request.post(slack_path, params=query_params, headers=headers)
 
 @tasks_bp.route("", methods=["GET", "POST"])
 def handle_tasks():
@@ -113,6 +128,10 @@ def mark_task_complete(task_id):
     task.completed_at = datetime.now()
 
     db.session.commit()
+
+    slack_message = f"A user just completed task: {task.title}"
+    post_message_to_slack(slack_message)
+    
     completed_task = {"task": 
 
             {"id": task.task_id,
