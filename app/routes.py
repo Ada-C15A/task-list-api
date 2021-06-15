@@ -1,14 +1,15 @@
 import re
 from app.models.task import Task
+from app.models.goal import Goal
 from app import db 
 from flask import request, Blueprint, make_response, jsonify#
 from datetime import datetime
-from dotenv import load_dotenv
 import os
 import json, requests
+from dotenv import load_dotenv
 
 tasks_bp = Blueprint("tasks", __name__, url_prefix="/tasks") 
-
+goals_bp = Blueprint("goals", __name__, url_prefix="/goals") 
 load_dotenv()
 
 def post_message_to_slack(text):
@@ -20,6 +21,76 @@ def post_message_to_slack(text):
     }
     headers = {'Authorization': f"Bearer {SLACK_TOKEN}"}
     request.post(slack_path, params=query_params, headers=headers)
+
+@goals_bp.route("", methods=["GET", "POST"])
+def handle_goals():
+    if request.method == "POST": 
+        request_body = request.get_json()
+        title = request_body.get("title")
+
+        if not title:
+            return jsonify({"details": "Invalid data"}), 400
+
+        new_goal = Goal(title=request_body["title"])
+
+        db.session.add(new_goal)
+        db.session.commit()
+
+        committed_goal = {"goal": 
+            {"id": new_goal.goal_id,
+            "title": new_goal.title
+            }}
+
+        return jsonify(committed_goal), 201
+
+    elif request.method == "GET":
+        goals = Goal.query.all()
+        goals_response = []
+        
+        for goal in goals:
+            goals_response.append({
+                "title": goal.title,
+                "id": goal.goal_id
+            })
+
+        return jsonify(goals_response), 200
+
+@goals_bp.route("/<goal_id>", methods=["GET", "PUT", "DELETE"])
+def handle_goal(goal_id):
+    goal = Goal.query.get_or_404(goal_id)
+    
+    if request.method =="GET":
+        if goal == None:
+            return make_response("No matching goal found"), 404
+        
+        selected_goal = {"goal": 
+            {"id": goal.goal_id,
+            "title": goal.title
+            }}
+        return selected_goal
+    
+    elif request.method == "PUT":
+        form_data = request.get_json()
+        goal.title = form_data["title"]
+
+        db.session.commit()
+
+        committed_goal = {"goal": 
+            {"id": goal.goal_id,
+            "title": goal.title
+            }}
+        return jsonify(committed_goal), 200
+    
+    elif request.method == "DELETE":
+        db.session.delete(goal)
+        db.session.commit()
+        goal_response_body = {
+            "details":
+                f'Goal {goal.goal_id} \"{goal.title}\" successfully deleted'
+            }
+        return jsonify(goal_response_body)
+
+
 
 @tasks_bp.route("", methods=["GET", "POST"])
 def handle_tasks():
@@ -131,7 +202,7 @@ def mark_task_complete(task_id):
 
     slack_message = f"A user just completed task: {task.title}"
     post_message_to_slack(slack_message)
-    
+
     completed_task = {"task": 
 
             {"id": task.task_id,
