@@ -1,10 +1,13 @@
+from app.models.goal import Goal
 from flask import Blueprint, request, make_response, jsonify
 from sqlalchemy.orm import query
 from sqlalchemy import desc
 from app.models.task import Task
 from app import db
+from datetime import datetime
 
 tasks_bp = Blueprint("tasks", __name__, url_prefix="/tasks")
+goals_bp = Blueprint("goals", __name__, url_prefix="/goals")
 
 # Get all tasks and create a task
 @tasks_bp.route("", methods=["GET", "POST"])
@@ -83,3 +86,48 @@ def handle_task(task_id):
         db.session.delete(task)
         db.session.commit()
         return make_response({"details": f'Task {task.task_id} "{task.title}" successfully deleted'})
+
+@tasks_bp.route("/<task_id>/mark_incomplete", methods=["PATCH"])
+def mark_task_incomplete(task_id):
+    if request.method == "PATCH":
+        task = Task.query.get(task_id)
+        if task is None:
+            return make_response("",404)
+
+        task.completed_at = None
+        db.session.commit()
+        return make_response({
+            "task":{
+                "id":task.task_id,
+                "title":task.title,
+                "description":task.description,
+                "is_complete": False if not task.completed_at else True}}, 200)
+
+@tasks_bp.route("/<task_id>/mark_complete", methods=["PATCH"])
+def mark_task_complete(task_id):
+    if request.method == "PATCH":
+        task = Task.query.get(task_id)
+        if task is None:
+            return make_response("",404)
+
+        task.completed_at = datetime.now()
+        db.session.commit()
+        return make_response({
+            "task":{
+                "id":task.task_id,
+                "title":task.title,
+                "description":task.description,
+                "is_complete": False if not task.completed_at else True}}, 200)
+
+@goals_bp.route("/", methods=["GET","POST"])
+def handle_goals():
+    if request.method == "GET":
+
+        goals = Goal.query.all()
+        goals_response = []
+        for goal in goals:
+            goals_response.append({
+                "id": goal.goal_id,
+                "title": goal.title,
+            })
+        return jsonify(goals_response)
