@@ -118,3 +118,50 @@ def test_task_to_json_with_goal(one_task_belongs_to_one_goal):
     assert task_json["description"] == task.description
     assert task_json["is_complete"] == task.is_complete()
     assert task_json.get("goal_id") == task.goal_id
+
+def test_get_tasks_search_by_title_that_exists(client, three_tasks):
+    # Act
+    response = client.get("/tasks?search_title=Answer forgotten email 📧")
+    response_body = response.get_json()
+
+    # Assert
+    assert response.status_code == 200
+    assert len(response_body) == 1
+    assert response_body == [
+        {
+            "id": 2,
+            "title": "Answer forgotten email 📧",
+            "description": "",
+            "is_complete": False}
+    ]
+    
+def test_get_tasks_search_by_title_that_does_not_exists(client):
+    # Act
+    response = client.get("/tasks?search_title=non-existent title")
+    response_body = response.get_json()
+
+    # Assert
+    assert response.status_code == 200
+    assert len(response_body) == 0
+    assert response_body == []
+
+def test_get_tasks_search_by_title_that_has_multiple(client, duplicate_title_tasks):
+    # Act
+    response = client.get("/tasks?search_title=Super Fun Title")
+    response_body = response.get_json()
+
+    # Assert
+    assert response.status_code == 200
+    assert len(response_body) == 2
+    assert response_body == [
+        {
+            "id": 1,
+            "title": "Super Fun Title",
+            "description": "Do something fun every day",
+            "is_complete": False},
+        {
+            "id": 2,
+            "title": "Super Fun Title",
+            "description": "Do something else fun every day",
+            "is_complete": False}
+    ]

@@ -9,6 +9,7 @@ bp = Blueprint("tasks", __name__, url_prefix="/tasks")
 @bp.route("", methods=["GET"])
 def get_tasks():
     sort_query = request.args.get("sort")
+    search_title_query = request.args.get("search_title")
     if sort_query:
         if sort_query == "asc":
             tasks = Task.query.order_by(Task.title).all()
@@ -16,6 +17,8 @@ def get_tasks():
             tasks = Task.query.order_by(Task.title.desc()).all()
         else:
             return make_response(f"{sort_query} is not a valid sort parameter. Please use sort=asc or sort=desc.", 400)
+    elif search_title_query:
+        tasks = Task.query.filter_by(title=search_title_query).all()
     else:
         tasks = Task.query.all()
         
