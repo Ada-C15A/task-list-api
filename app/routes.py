@@ -1,7 +1,7 @@
 from app import db
 from app.models.task import Task
 from flask import request, Blueprint, make_response, jsonify, json
-import datetime
+import datetime, requests, os
 
 tasks_bp = Blueprint("tasks", __name__, url_prefix="/tasks")
 
@@ -81,6 +81,15 @@ def handle_task(task_id):
         return make_response({
             "details":f"Task {task.task_id} \"{task.title}\" successfully deleted"
         })
+def post_to_slack(slack_message):
+    SLACK_TOKEN = os.environ.get('SLACK_ACCESS_TOKEN')
+    slack_path = "https://slack.com/api/chat.postMessage"
+    query_params ={
+        'channel': 'task-notifications',
+        'text': slack_message  
+    }
+    headers = {'Authorization': f"Bearer {SLACK_TOKEN}"}
+    requests.post(slack_path, params=query_params, headers=headers)
 
 @tasks_bp.route("/<task_id>/mark_complete", methods=["PATCH"])
 def handle_task_completion(task_id):
@@ -90,12 +99,16 @@ def handle_task_completion(task_id):
     elif request.method == "PATCH":
         if bool(task.completed_at) == False:
             task.completed_at = datetime.datetime.now()
-        return ({ "task":{
+            slack_message =  f"Someone just completed the task {task.title}"
+            post_to_slack(slack_message)
+        return (
+            { "task":{
             "id": task.task_id,
             "title": task.title,
             "description": task.description,
             "is_complete": bool(task.completed_at)
-        }}, 200)
+        }}, 200
+        )
 
 @tasks_bp.route("/<task_id>/mark_incomplete", methods=["PATCH"])
 def handle_task_not_completion(task_id):
