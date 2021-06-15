@@ -3,10 +3,10 @@ from app import db
 from app.models.task import Task
 from datetime import datetime
 
-task_list_api_bp = Blueprint("task_list_api", __name__)
+task_list_api_bp = Blueprint("task_list_api", __name__, url_prefix="/tasks")
 
 
-@task_list_api_bp.route("/", methods=["GET", "POST"])
+@task_list_api_bp.route("", methods=["GET", "POST"])
 def tasks():
     if request.method == "GET":
         tasks_sort = request.args.get("sort")
@@ -40,6 +40,7 @@ def tasks():
         return jsonify(tasks_response)
 
     elif request.method == "POST":
+
         request_body = request.get_json(force=True)
 
         if 'title' not in request_body or 'description' not in request_body or 'completed_at' not in request_body:
@@ -55,7 +56,7 @@ def tasks():
                 "id": new_task.id,
                 "title": new_task.title,
                 "description": new_task.description,
-                "is_complete": False
+                "is_complete": True if new_task.completed_at else False
             }
         }, 201
 
@@ -64,7 +65,7 @@ def tasks():
 def handle_task(task_id):
     task = Task.query.get(task_id)
     if task is None:
-        return make_response("{task_id} doesnt exist", 404)
+        return make_response(f"{task_id} doesnt exist", 404)
 
     # is_complete = task.completed_at
     # if task.completed_at != None:
@@ -86,6 +87,7 @@ def handle_task(task_id):
         db.session.delete(task)
         db.session.commit()
         return make_response({"details": f"Task {task.id} \"{task.title}\" successfully deleted"})
+
     elif request.method == "PUT":
         form_data = request.get_json()
         task.title = form_data["title"]
@@ -100,5 +102,47 @@ def handle_task(task_id):
                 "title": "Updated Task Title",
                 "description": "Updated Test Description",
                 "is_complete": True if task.completed_at else False
+            }
+        }, 200
+
+
+@task_list_api_bp.route("/<task_id>/mark_complete", methods=["PATCH"])
+def mark_complete(task_id):
+    task = Task.query.get(task_id)
+
+    if task is None:
+        return make_response(f"{task_id} doesnt exist", 404)
+    task.completed_at = datetime.utcnow()
+
+    db.session.commit()
+
+    if request.method == "PATCH":
+        return {
+            "task": {
+                "id": task.id,
+                "title": task.title,
+                "description": task.description,
+                "is_complete": True if task.completed_at else False
+            }
+        }, 200
+
+
+@task_list_api_bp.route("/<task_id>/mark_incomplete", methods=["PATCH"])
+def mark_incomplete(task_id):
+    task = Task.query.get(task_id)
+
+    if task is None:
+        return make_response(f"{task_id} doesnt exist", 404)
+
+    task.completed_at = None
+    db.session.commit()
+
+    if request.method == "PATCH":
+        return {
+            "task": {
+                "id": task.id,
+                "title": task.title,
+                "description": task.description,
+                "is_complete":  True if task.completed_at else False
             }
         }, 200
