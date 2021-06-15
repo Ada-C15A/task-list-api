@@ -83,7 +83,7 @@ def add_goal_tasks(goal_id):
         goal_response.tasks.append(task)
             
         db.session.add(goal_response)
-        db.session.commit()
+    db.session.commit()
         
     return make_response(
         {"id": goal_response.id,

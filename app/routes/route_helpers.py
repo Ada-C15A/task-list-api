@@ -10,6 +10,7 @@ def validate_item(type, id):
         return make_response(f"{id} is not a valid {type}_id. {type.title()} ID must be an integer.", 400)
     
     if type == "task":
+        # item = Task.query.get_or_404(id) # This will give the standard 404 page instead of custom message
         item = Task.query.get(id)
     elif type == "goal":
         item = Goal.query.get(id)
