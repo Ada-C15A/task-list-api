@@ -235,7 +235,8 @@ def handle_goal_tasks(goal_id):
         for id in task_ids:
             task = Task.query.get(id)
             task.goal_id = goal_id
-            db.session.commit()
+
+        db.session.commit()
 
         return make_response(
                 {
