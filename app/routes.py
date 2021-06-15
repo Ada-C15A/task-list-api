@@ -1,11 +1,10 @@
 from app import db
 from app.models.task import Task
 from app.models.goal import Goal
-from flask import request, Blueprint, make_response, jsonify
+from flask import json, request, Blueprint, make_response, jsonify
 from datetime import datetime
 import os
 import requests
-
 
 tasks_bp = Blueprint("tasks_bp", __name__, url_prefix="/tasks")
 
@@ -54,15 +53,23 @@ def handle_tasks():
             "title": new_task.title,
             "description": new_task.description,
             "is_complete": bool(new_task.completed_at)
-            }}
-        
+        }}
         return jsonify(commited_task), 201
 
 @tasks_bp.route("/<tasks_id>", methods=["GET", "PUT", "DELETE"])
 def handle_task(tasks_id):
     task = Task.query.get_or_404(tasks_id)
     if request.method == "GET":
-        selected_task = {"task":
+        if task.goal_id != None:
+            selected_task = {"task":
+            {"id": task.id,
+            "goal_id": task.goal_id,
+            "title": task.title,
+            "description": task.description,
+            "is_complete": bool(task.completed_at)
+            }}
+        else:
+            selected_task = {"task":
             {"id": task.id,
             "title": task.title,
             "description": task.description,
@@ -143,7 +150,7 @@ def handle_goals():
         goals_response = []
         for goal in goals:
             goals_response.append({
-                "id": goal.id,
+                "id": goal.goal_id,
                 "title": goal.title,
             })
         return jsonify(goals_response), 200
@@ -156,7 +163,7 @@ def handle_goals():
             
         db.session.add(new_goal)
         db.session.commit()
-        goal_response_body = {"goal": {"id": new_goal.id, "title": new_goal.title}}
+        goal_response_body = {"goal": {"id": new_goal.goal_id, "title": new_goal.title}}
         
         return jsonify(goal_response_body), 201
 
@@ -166,14 +173,14 @@ def handle_goal(goal_id):
     if request.method == "GET":
         selected_goal = {"goal":
             {"title": goal.title,
-            "id": goal.id
+            "id": goal.goal_id
             }}
         return jsonify(selected_goal), 200
     elif request.method == "PUT":
         request_body = request.get_json()
         goal.title = request_body["title"]
         updated_goal = {'goal':{
-                "id": goal.id,
+                "id": goal.goal_id,
                 "title": goal.title
             }}
         db.session.commit()
@@ -182,5 +189,36 @@ def handle_goal(goal_id):
     elif request.method == "DELETE":
         db.session.delete(goal)
         db.session.commit()
-        goal_response_body = {"details": f'Goal {goal.id} "{goal.title}" successfully deleted'}
+        goal_response_body = {"details": f'Goal {goal.goal_id} "{goal.title}" successfully deleted'}
         return jsonify(goal_response_body),200
+
+@goal_bp.route("/<goal_id>/tasks", methods=["GET", "POST"])
+def handle_goals_and_tasks(goal_id):
+    if request.method == "POST":
+        goal = Goal.query.get_or_404(goal_id)
+        request_body = request.get_json()
+        for id in request_body["task_ids"]:
+            task = Task.query.get(id)
+            goal.tasks.append(task)
+            db.session.add(goal)
+            db.session.commit()
+
+        goal_task_response_body = {"id": goal.goal_id, "task_ids": request_body["task_ids"]}
+        return jsonify(goal_task_response_body), 200
+
+    elif request.method == "GET":
+        goal = Goal.query.get_or_404(goal_id)
+        tasks = goal.tasks
+        list_of_tasks = []
+
+        for task in tasks:
+            individual_task = {
+                "id": task.id,
+                "goal_id": goal.goal_id,
+                "title": task.title,
+                "description": task.description,
+                "is_complete": bool(task.completed_at)
+            }
+            list_of_tasks.append(individual_task)
+        goal_task_get_response_body = {"id": goal.goal_id, "title": goal.title,"tasks": list_of_tasks}
+        return jsonify(goal_task_get_response_body), 200
