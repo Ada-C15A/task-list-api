@@ -1,6 +1,7 @@
 from app import db
 from flask import Blueprint, json
-from sqlalchemy import asc, desc 
+from sqlalchemy import asc, desc
+from app.models import task 
 from app.models.task import Task
 from app.models.goal import Goal
 from datetime import datetime
@@ -252,5 +253,21 @@ def handle_goal(goal_id):
         return {
             "details": f"Goal {goal.goal_id} \"{goal.title}\" successfully deleted"
         }
+# one-to-many relationship
+@goals_bp.route("/<goal_id>/tasks", methods = ["POST", "GET"], strict_slashes = False)
+def handle_task_to_goals(goal_id):
+    goal = Goal.query.get(goal_id)
+    if not goal:
+        return "", 404
 
-x
+    if request.method == "POST":
+        request_body = request.get_json()
+        task_ids = request_body["task_ids"]
+
+        for task_id in task_ids:
+            goal_id.task_id = goal_id
+
+            db.session.commit()
+
+        return {"id":(goal_id), "task_ids": task_ids},200
+
