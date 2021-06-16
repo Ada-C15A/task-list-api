@@ -192,17 +192,22 @@ def handle_tasks():
             tasks = Task.query.all()
 
         tasks_response = []
+        
         for task in tasks:
+            if task.completed_at == None:
+                completed_at = False
+            else:
+                completed_at = True
+
             tasks_response.append({
                 "id": task.task_id,
                 "title": task.title,
                 "description": task.description,
-                "is_complete": bool(task.completed_at),
-                "goal": task.goal_id
+                "is_complete": completed_at
             })
-        return jsonify(tasks_response)
+        return jsonify(tasks_response), 200
 
-@tasks_bp.route("/<task_id>", methods=["GET", "PUT", "DELETE", "PATCH"])    
+@tasks_bp.route("/<task_id>", methods=["GET", "PUT", "DELETE"])    
 def handle_task(task_id):
     task = Task.query.get(task_id)
     if task is None:
@@ -275,12 +280,17 @@ def mark_task_complete(task_id):
     slack_message = f"A user just completed task: {task.title}"
     post_message_to_slack(slack_message)
 
-    completed_task = {"task": 
+    if task.completed_at == None:
+        completed_at = False
+    else:
+        completed_at = True
 
-            {"id": task.task_id,
+    completed_task = {
+        "task": {
+            "id": task.task_id,
             "title": task.title,
             "description": task.description,
-            "is_complete": bool(task.completed_at)
+            "is_complete": completed_at
         }}
     return jsonify(completed_task), 200
 
