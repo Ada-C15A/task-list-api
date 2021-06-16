@@ -5,7 +5,7 @@ from app import db
 from flask import request, Blueprint, make_response, jsonify#
 from datetime import datetime
 import os
-import json, requests
+import requests
 from dotenv import load_dotenv
 
 tasks_bp = Blueprint("tasks", __name__, url_prefix="/tasks") 
@@ -21,7 +21,7 @@ def post_message_to_slack(text):
         'text': text 
     }
     headers = {'Authorization': f"Bearer {SLACK_TOKEN}"}
-    request.post(slack_path, params=query_params, headers=headers)
+    requests.post(slack_path, params=query_params, headers=headers)
 
 @goals_bp.route("", methods=["GET", "POST"])
 def handle_goals():
