@@ -139,3 +139,7 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+#SLACK TOKEN
+TOKEN_SLACK
+xoxb-708663070965-2182160263012-6dhG9fHP6cx1d1Wlla10RjEz
