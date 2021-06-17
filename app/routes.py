@@ -1,13 +1,15 @@
 
 from app import db
 from app.models.task import Task
+from app.models.goal import Goal
 from flask import request, Blueprint, make_response, jsonify
 from sqlalchemy import asc, desc
 from datetime import datetime
 import os 
 import requests
-tasks_bp = Blueprint("tasks", __name__, url_prefix="/tasks")
 
+tasks_bp = Blueprint("tasks", __name__, url_prefix="/tasks")
+goals_bp = Blueprint('goals', __name__, url_prefix='/goals')
 
 def is_complete(completed_at):
   
@@ -119,6 +121,7 @@ def handle_complete(task_id):
         return make_response("", 404)
 
     task.completed_at = datetime.now()
+
     db.session.commit()
     
     slack_url='https://slack.com/api/chat.postMessage'
@@ -172,3 +175,75 @@ def handle_incomplete(task_id):
 
 
 
+# Routes for Goal
+
+@goals_bp.route("", methods=["GET","POST"])
+def handle_goals():
+    goal_reponse=[]
+    goals = Goal.query.all()
+  
+    if request.method == "GET":
+    
+        for goal in goals:
+            
+            goal_reponse.append({
+                "id": goal.goal_id,
+                "title":goal.title,
+            })
+        return make_response(jsonify(goal_reponse),200)
+
+    else:
+        request_body = request.get_json()
+        if "title" not in request_body:
+            return make_response({"details": "Invalid data"}, 400)    
+        new_goal = Goal(title = request_body["title"])
+        db.session.add(new_goal)
+        db.session.commit()
+        response_data = {
+        "goal": {
+            'id': new_goal.goal_id,
+            "title":new_goal.title
+
+        }
+    
+    } 
+
+        return make_response(response_data,201)
+
+ 
+
+
+
+@goals_bp.route("/<goal_id>", methods= ["GET","PUT","DELETE"])
+def handle_goal_id(goal_id):
+    goal = Goal.query.get(goal_id)
+    if goal is None:
+        return make_response("",404)
+    if request.method == "GET":
+        if goal is not None:
+            return {
+                "goal":{
+                    "id" : goal.goal_id,
+                    "title": goal.title
+                }
+            }
+    
+    elif request.method == "PUT":
+        data = request.get_json()
+        goal.title= data["title"]
+        db.session.commit()
+
+        data_response= {
+            "goal":{
+                "id": goal.goal_id,
+                "title": goal.title
+            }
+        }
+
+        return make_response(data_response)
+
+    elif request.method == "DELETE":
+        db.session.delete(goal)
+        db.session.commit()
+        delete_id_response= f'Goal {goal_id} "{goal.title}" successfully deleted'
+        return make_response(jsonify({"details":delete_id_response}))
