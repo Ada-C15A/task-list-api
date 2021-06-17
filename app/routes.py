@@ -5,6 +5,9 @@ from app.models.goal import Goal
 from datetime import datetime
 import os
 import requests
+from dotenv import load_dotenv
+
+load_dotenv()
 
 task_list_api_bp = Blueprint("task_list_api", __name__, url_prefix="/tasks")
 goals_bp = Blueprint("goals", __name__, url_prefix="/goals")
@@ -236,3 +239,46 @@ def handle_goal(goal_id):
                 "title": "Updated Goal Title",
             }
         }, 200
+
+
+@goals_bp.route("/<goal_id>/tasks", methods=["POST", "GET"])
+def handle_goal_tasks(goal_id):
+    goal = Goal.query.get(goal_id)
+    if goal is None:
+        return make_response(f"{goal_id} doesnt exist", 404)
+
+    if request.method == "GET":
+        tasks = Task.query.filter(Task.goal_id == goal_id)
+        all_goal_tasks = []
+
+        for task in tasks:
+            all_goal_tasks.append({
+                "id": task.id,
+                "goal_id": goal.id,
+                "title": task.title,
+                "description": task.description,
+                "is_complete": True if task.completed_at else False
+            })
+
+        return make_response(
+            {
+                "id": goal.id,
+                "title": goal.title,
+                "tasks": all_goal_tasks
+            }, 200)
+
+    elif request.method == "POST":
+        form_data = request.get_json()
+        task_ids = form_data['task_ids']
+
+        for id in task_ids:
+            task = Task.query.get(id)
+            task.goal_id = goal_id
+
+        db.session.commit()
+
+        return make_response(
+            {
+                "id": goal.id,
+                "task_ids": task_ids
+            }, 200)
