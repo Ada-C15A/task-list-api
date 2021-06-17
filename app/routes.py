@@ -247,3 +247,7 @@ def handle_goal_id(goal_id):
         db.session.commit()
         delete_id_response= f'Goal {goal_id} "{goal.title}" successfully deleted'
         return make_response(jsonify({"details":delete_id_response}))
+
+# @goals_bp.route('<goal_id>/tasks', methods=["GET", "POST"])
+
+    
