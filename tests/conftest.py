@@ -86,3 +86,17 @@ def one_task_belongs_to_one_goal(app, one_goal, one_task):
     goal = Goal.query.first()
     goal.tasks.append(task)
     db.session.commit()
+
+# This fixture gets called in every test that
+# references "duplicate_title_tasks"
+# This fixture creates 2 tasks with 
+# the same title
+@pytest.fixture
+def duplicate_title_tasks(app):
+    new_task1 = Task(
+        title="Super Fun Title", description="Do something fun every day", completed_at=None)
+    new_task2 = Task(
+        title="Super Fun Title", description="Do something else fun every day", completed_at=None)
+    db.session.add(new_task1)
+    db.session.add(new_task2)
+    db.session.commit()
